@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Custom retro styling elements */
+.retro-border {
+  border: 3px solid #1c1917;
+}
+
+.bg-taca-brasileirao {
+  background-image: linear-gradient(rgba(20, 62, 36, 0.85), rgba(15, 45, 27, 0.85)), url('https://pbs.twimg.com/media/HA5K8maagAAjzhl?format=jpg&name=large');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+
+.ticket-shadow {
+  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 0.4);
+}
+
+.ticket-picote-top {
+  position: relative;
+}
+
+.ticket-picote-top::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 0;
+  width: 100%;
+  height: 16px;
+  background-image: radial-gradient(circle, #143e24 6px, transparent 7px);
+  background-size: 16px 16px;
+  background-position: -4px 0;
+}
+
+.ticket-picote-bottom {
+  position: relative;
+}
+
+.ticket-picote-bottom::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 100%;
+  height: 16px;
+  background-image: radial-gradient(circle, #143e24 6px, transparent 7px);
+  background-size: 16px 16px;
+  background-position: -4px 0;
+}

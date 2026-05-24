@@ -1,0 +1,6 @@
+{
+  "name": "Bolão do Brasileirão Retrô",
+  "description": "Simulador clássico de volante de loteria esportiva física com travas de horário reais, gerador de checksum e envio via WhatsApp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
