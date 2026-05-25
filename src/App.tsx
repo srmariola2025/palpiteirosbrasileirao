@@ -485,7 +485,7 @@ export default function App() {
   const handleGenerateAndSubmit = () => {
     // 1. Check for player's name
     if (!fullName.trim()) {
-      setValidationWarning("Por favor, preencha o seu nome no volante físico para enviar os seus palpites.");
+      setValidationWarning("Por favor, preencha o seu nome usado nos palpiteiros para enviar os seus palpites.");
       // Scroll to name field
       const nameInput = document.getElementById("name-input-field");
       nameInput?.scrollIntoView({ behavior: "smooth" });
@@ -695,7 +695,7 @@ export default function App() {
                 htmlFor="name-input-field"
                 className="block text-[10px] sm:text-xs font-mono font-black text-neutral-800 tracking-wider uppercase"
               >
-                👤 SEU NOME COMPLETO:
+                👤 NOME USADO NOS PALPITEIROS:
               </label>
               <input
                 type="text"
@@ -706,7 +706,7 @@ export default function App() {
                   setValidationWarning(null);
                 }}
                 maxLength={40}
-                placeholder="REGISTRE SEU NOME COMPLETO..."
+                placeholder="NOME USADO NOS PALPITEIROS..."
                 className="w-full bg-white border-2 border-neutral-900 rounded-none px-3 py-2.5 text-xs font-mono font-black tracking-wide uppercase text-neutral-900 placeholder-neutral-400 focus:bg-amber-50/50 focus:ring-0 focus:outline-none transition-all shadow-[3px_3px_0px_#171717]"
               />
             </div>
