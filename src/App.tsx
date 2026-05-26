@@ -684,6 +684,7 @@ export default function App() {
             formattedTime={formatTimeToShow(currentActiveTime)}
             nextMatchCountdown={nextMatchCountdown}
             nextMatchLabel={nextMatchLabel}
+            activeRoundName={activeRoundName}
           />
 
           {/* Main User Workspace Area */}

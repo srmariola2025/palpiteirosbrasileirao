@@ -8,6 +8,7 @@ interface TrophyHeaderProps {
   formattedTime: string;
   nextMatchCountdown?: string;
   nextMatchLabel?: string;
+  activeRoundName: string;
 }
 
 export const TrophyHeader: React.FC<TrophyHeaderProps> = ({
@@ -16,7 +17,8 @@ export const TrophyHeader: React.FC<TrophyHeaderProps> = ({
   simulatedTimeActive,
   formattedTime,
   nextMatchCountdown,
-  nextMatchLabel
+  nextMatchLabel,
+  activeRoundName
 }) => {
   return (
     <header className="relative border-b-2 border-neutral-900 bg-[#f2ede4] p-5 select-none text-neutral-900">
@@ -55,8 +57,8 @@ export const TrophyHeader: React.FC<TrophyHeaderProps> = ({
         {/* Right column with Rodada Badge */}
         <div className="text-left md:text-right flex md:flex-col items-start md:items-end justify-between w-full md:w-auto border-t md:border-t-0 border-neutral-300 pt-3 md:pt-0">
           <div>
-            <div className="bg-neutral-900 text-amber-300 px-3 py-1 text-lg font-black tracking-tight mb-1 inline-block md:block font-mono">
-              17ª <span className="text-xs font-sans uppercase">RODADA</span>
+            <div className="bg-neutral-900 text-amber-300 px-3 py-1 text-base md:text-lg font-black tracking-tight mb-1 inline-block md:block font-mono uppercase">
+              {activeRoundName}
             </div>
             <div className="text-[10px] font-mono font-bold text-neutral-500 uppercase tracking-wider">
               ESTADO: {simulatedTimeActive ? "TESTE ATIVO" : "ATIVO"}
