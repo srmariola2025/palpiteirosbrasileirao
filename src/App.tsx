@@ -855,11 +855,6 @@ export default function App() {
         {/* Admin Secret simulation bar */}
         {showSimulator && (
           <AdminPanel
-            simulatedTime={simulatedTimeStr}
-            onChangeSimulatedTime={handleCustomTimeChange}
-            onQuickTravel={handleQuickTravel}
-            realTimeFormatted={formatTimeToShow(realTime)}
-            simulatedActive={simulatedActive}
             activeRound={selectedRound}
             matches={sortMatchesChronologically(matchesState[selectedRound] || [])}
             onUpdateMatchTime={handleUpdateMatchTime}
