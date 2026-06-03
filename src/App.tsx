@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { 
   RotateCcw, 
   Send, 
@@ -254,6 +254,11 @@ export default function App() {
   const [ufmgStatsVisible, setUfmgStatsVisible] = useState<boolean>(false);
   const [copiedNotification, setCopiedNotification] = useState<boolean>(false);
 
+  // Custom password prompt state
+  const [passwordModalOpen, setPasswordModalOpen] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>("");
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+
   // Submitted slips tracking
   const [recentSlips, setRecentSlips] = useState<BetSlipSubmission[]>(() => {
     const list = localStorage.getItem("loto_betslips");
@@ -480,8 +485,9 @@ export default function App() {
   const handleTrophyClick = () => {
     const nextClicks = trophyClicks + 1;
     if (nextClicks === 10) {
-      setShowSimulator(true);
-      localStorage.setItem("loto_debug_active", "true");
+      setPasswordModalOpen(true);
+      setPasswordInput("");
+      setPasswordError(null);
       setTrophyClicks(10); // stay locked inside active debug state
     } else if (nextClicks === 20) {
       setShowSimulator(false);
@@ -493,6 +499,22 @@ export default function App() {
     } else {
       setTrophyClicks(nextClicks);
     }
+  };
+
+  const handlePasswordSubmit = (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    if (passwordInput === "142536") {
+      setShowSimulator(true);
+      localStorage.setItem("loto_debug_active", "true");
+      setPasswordModalOpen(false);
+    } else {
+      setPasswordError("Senha incorreta! Verifique os dígitos.");
+    }
+  };
+
+  const handleCancelPassword = () => {
+    setPasswordModalOpen(false);
+    setTrophyClicks(0);
   };
 
   // Administrative Preset click handlers
@@ -1125,6 +1147,74 @@ export default function App() {
             setCleanClicks(0);
           }}
         />
+      )}
+
+      {/* Password Prompt modal for mobile-friendly and iframe bypass compatibility */}
+      {passwordModalOpen && (
+        <div id="password-modal" className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-neutral-900 border-2 border-yellow-500 w-full max-w-sm rounded p-5 relative shadow-[8px_8px_0px_#171717] animate-in fade-in duration-200">
+            <button 
+              onClick={handleCancelPassword}
+              className="absolute top-3 right-3 text-neutral-400 hover:text-white transition-colors"
+              aria-label="Minimizar modal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="text-center space-y-4">
+              <div className="mx-auto w-12 h-12 bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center rounded-full text-yellow-500">
+                <Lock className="w-6 h-6 animate-pulse" />
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="font-sans font-black tracking-wider uppercase text-yellow-500 text-sm">
+                  PROTEGER PAINEL ADMINISTRATIVO
+                </h3>
+                <p className="text-[10px] sm:text-xs font-mono text-neutral-400">
+                  Para habilitar o Painel de Gestão e Testes da Plataforma, digite a senha secreta de admin:
+                </p>
+              </div>
+
+              <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <input
+                    type="password"
+                    maxLength={6}
+                    placeholder="••••••"
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value.replace(/\D/g, ""));
+                      setPasswordError(null);
+                    }}
+                    autoFocus
+                    className="w-full text-center tracking-widest bg-neutral-950 text-yellow-400 border border-neutral-700 focus:border-yellow-500 rounded p-3 font-mono text-2xl outline-none transition-colors"
+                  />
+                  {passwordError && (
+                    <p className="text-[10px] text-red-400 font-mono font-bold animate-shake">
+                      {passwordError}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex gap-2.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelPassword}
+                    className="flex-1 py-2 rounded bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-bold text-xs uppercase transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 rounded bg-yellow-500 hover:bg-yellow-400 text-neutral-950 font-sans font-black text-xs uppercase transition-all"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
