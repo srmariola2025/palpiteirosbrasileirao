@@ -28,6 +28,7 @@ interface AdminPanelProps {
   onResetAllMatches: () => void;
   onSyncAPI: (roundNum: number, syncedMatches: Match[]) => void;
   onChangeActiveRound: (roundNum: number) => void;
+  onClose: () => void;
 
   // Firebase Auth & Cloud Sync Support
   currentUser: any;
@@ -46,6 +47,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onResetAllMatches,
   onSyncAPI,
   onChangeActiveRound,
+  onClose,
 
   currentUser,
   isAdminLogged,
@@ -118,6 +120,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const generateFallbackGamesForRoundClient = (roundNum: number) => {
+    if (roundNum === 19) {
+      return [
+        {
+          equipes: { mandante: { nome_popular: "Fluminense", nome: "Fluminense" }, visitante: { nome_popular: "RB Bragantino", nome: "RB Bragantino" } },
+          data_realizacao: "2026-07-22T16:00:00", hora_realizacao: "16:00", sede: { nome_popular: "Maracanã" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Botafogo", nome: "Botafogo" }, visitante: { nome_popular: "Santos", nome: "Santos" } },
+          data_realizacao: "2026-07-22T17:00:00", hora_realizacao: "17:00", sede: { nome_popular: "Nilton Santos" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "São Paulo", nome: "São Paulo" }, visitante: { nome_popular: "Athletico-PR", nome: "Athletico-PR" } },
+          data_realizacao: "2026-07-22T18:00:00", hora_realizacao: "18:00", sede: { nome_popular: "MorumBIS" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Corinthians", nome: "Corinthians" }, visitante: { nome_popular: "Remo", nome: "Remo" } },
+          data_realizacao: "2026-07-22T19:00:00", hora_realizacao: "19:00", sede: { nome_popular: "Neo Química Arena" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Mirassol", nome: "Mirassol" }, visitante: { nome_popular: "Grêmio", nome: "Grêmio" } },
+          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Maião" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Atlético-MG", nome: "Atlético-MG" }, visitante: { nome_popular: "Bahia", nome: "Bahia" } },
+          data_realizacao: "2026-07-22T11:00:00", hora_realizacao: "11:00", sede: { nome_popular: "Arena MRV" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Internacional", nome: "Internacional" }, visitante: { nome_popular: "Cruzeiro", nome: "Cruzeiro" } },
+          data_realizacao: "2026-07-22T16:00:00", hora_realizacao: "16:00", sede: { nome_popular: "Beira-Rio" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Coritiba", nome: "Coritiba" }, visitante: { nome_popular: "Palmeiras", nome: "Palmeiras" } },
+          data_realizacao: "2026-07-22T18:30:00", hora_realizacao: "18:30", sede: { nome_popular: "Couto Pereira" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Vitória", nome: "Vitória" }, visitante: { nome_popular: "Vasco da Gama", nome: "Vasco da Gama" } },
+          data_realizacao: "2026-07-22T20:30:00", hora_realizacao: "20:30", sede: { nome_popular: "Barradão" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Chapecoense", nome: "Chapecoense" }, visitante: { nome_popular: "Flamengo", nome: "Flamengo" } },
+          data_realizacao: "2026-07-22T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Arena Condá" }
+        }
+      ];
+    }
+
     const list = [...localTeamsPool];
     const n = list.length;
     const r = (roundNum - 1) % 19;
@@ -128,10 +175,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       "11:00", "16:00", "16:00", "18:30", "20:30"  // Domingo
     ];
 
-    const baseSaturday = new Date("2026-05-23T12:00:00-03:00");
-    const weeksOffset = roundNum - 17;
-    const targetSaturdayTime = baseSaturday.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
-    const saturdayDateObj = new Date(targetSaturdayTime);
+    let saturdayDateObj: Date;
+    if (roundNum >= 20) {
+      const baseSaturdayRound20 = new Date("2026-07-25T12:00:00-03:00");
+      const weeksOffset = roundNum - 20;
+      const targetSaturdayTime = baseSaturdayRound20.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
+      saturdayDateObj = new Date(targetSaturdayTime);
+    } else {
+      const baseSaturday = new Date("2026-05-23T12:00:00-03:00");
+      const weeksOffset = roundNum - 17;
+      const targetSaturdayTime = baseSaturday.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
+      saturdayDateObj = new Date(targetSaturdayTime);
+    }
     
     const formatDateString = (d: Date): string => {
       const year = d.getFullYear();
@@ -485,13 +540,21 @@ ${cleanMatches(matches)}
               MODO TESTE & GESTÃO DA PLATAFORMA
             </span>
           </div>
-          <button
-            onClick={() => setShowHelp(!showHelp)}
-            className="flex items-center gap-1 bg-neutral-900 border border-neutral-700 hover:border-yellow-500 text-neutral-300 hover:text-yellow-400 px-2.5 py-1 text-[10px] font-bold uppercase transition-all cursor-pointer rounded"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-            <span>{showHelp ? "Ocultar Ajuda" : "Ajuda / Tutorial"}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowHelp(!showHelp)}
+              className="flex items-center gap-1 bg-neutral-900 border border-neutral-700 hover:border-yellow-500 text-neutral-300 hover:text-yellow-400 px-2.5 py-1 text-[10px] font-bold uppercase transition-all cursor-pointer rounded"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>{showHelp ? "Ocultar Ajuda" : "Ajuda / Tutorial"}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="flex items-center gap-1 bg-red-950/40 border border-red-800 hover:border-red-500 text-red-350 hover:text-red-100 px-2.5 py-1 text-[10px] font-bold uppercase transition-all cursor-pointer rounded"
+            >
+              <span>✖ Fechar Painel</span>
+            </button>
+          </div>
         </div>
 
         {/* Dynamic Help details */}

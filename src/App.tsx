@@ -97,6 +97,26 @@ export default function App() {
         setFirebaseLoading(true);
         const cloudRounds = await fetchAllRoundsFromFirestore();
         if (cloudRounds) {
+          // Check if cloudRounds needs correction (outdated dates or matchups)
+          let needsForceUpdate = false;
+          const r19 = cloudRounds[19];
+          if (r19 && r19.length > 0) {
+            const hasJuneDate = r19.some(m => m.date.includes("-06-"));
+            const hasWrongTeam = r19[0]?.team1 !== "Fluminense" && r19[0]?.team1 !== "RB Bragantino" && r19[0]?.team2 !== "Fluminense" && r19[0]?.team2 !== "RB Bragantino";
+            if (hasJuneDate || hasWrongTeam) {
+              needsForceUpdate = true;
+            }
+          } else {
+            needsForceUpdate = true;
+          }
+
+          if (needsForceUpdate) {
+            console.log("Detectadas informações desatualizadas no banco para a 19ª Rodada. Corrigindo em memória...");
+            for (let r = 17; r <= 38; r++) {
+              cloudRounds[r] = getMatchesForRound(r);
+            }
+          }
+
           setMatchesState(cloudRounds);
           setFirebaseRoundsEmpty(false);
         } else {
@@ -134,6 +154,45 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // Automatic database repair if Admin is logged in and there is a structural discrepancy
+  useEffect(() => {
+    if (isAdminLogged) {
+      async function autoFixDatabase() {
+        try {
+          const cloudRounds = await fetchAllRoundsFromFirestore();
+          if (cloudRounds) {
+            const r19 = cloudRounds[19];
+            let needsRepair = false;
+            if (r19 && r19.length > 0) {
+              const hasJuneDate = r19.some(m => m.date.includes("-06-"));
+              const hasWrongTeam = r19[0]?.team1 !== "Fluminense" && r19[0]?.team1 !== "RB Bragantino" && r19[0]?.team2 !== "Fluminense" && r19[0]?.team2 !== "RB Bragantino";
+              if (hasJuneDate || hasWrongTeam) {
+                needsRepair = true;
+              }
+            } else {
+              needsRepair = true;
+            }
+
+            if (needsRepair) {
+              console.log("Admin detectado: Corrigindo e forçando dados de rodadas atualizados e cronologia correta no Firebase...");
+              const repairedRounds: Record<number, Match[]> = { ...cloudRounds };
+              for (let r = 1; r <= 38; r++) {
+                repairedRounds[r] = getMatchesForRound(r);
+              }
+              await bootstrapRoundsToFirestore(repairedRounds);
+              setMatchesState(repairedRounds);
+              setFirebaseRoundsEmpty(false);
+              console.log("Firebase Database corrigido com sucesso!");
+            }
+          }
+        } catch (repairErr) {
+          console.error("Failed to auto-repair Firestore database:", repairErr);
+        }
+      }
+      autoFixDatabase();
+    }
+  }, [isAdminLogged]);
 
   const handleLoginWithGoogle = async () => {
     try {
@@ -483,19 +542,23 @@ export default function App() {
 
   // Secret simulation trigger on clicks to Trophy
   const handleTrophyClick = () => {
-    const nextClicks = trophyClicks + 1;
-    if (nextClicks === 10) {
-      setPasswordModalOpen(true);
-      setPasswordInput("");
-      setPasswordError(null);
-      setTrophyClicks(10); // stay locked inside active debug state
-    } else if (nextClicks === 20) {
+    // Se o simulador/painel de gestão já estiver ativo, um clique único no troféu desliga ele de forma simples
+    if (showSimulator) {
       setShowSimulator(false);
       setSimulatedActive(false);
       localStorage.removeItem("loto_debug_active");
       localStorage.removeItem("loto_sim_active");
       localStorage.removeItem("loto_simulated_time");
       setTrophyClicks(0);
+      return;
+    }
+
+    const nextClicks = trophyClicks + 1;
+    if (nextClicks === 10) {
+      setPasswordModalOpen(true);
+      setPasswordInput("");
+      setPasswordError(null);
+      setTrophyClicks(10); // stay locked inside active debug state
     } else {
       setTrophyClicks(nextClicks);
     }
@@ -883,6 +946,14 @@ export default function App() {
             onResetAllMatches={handleResetAllMatches}
             onSyncAPI={handleSyncAPI}
             onChangeActiveRound={setSelectedRound}
+            onClose={() => {
+              setShowSimulator(false);
+              setSimulatedActive(false);
+              localStorage.removeItem("loto_debug_active");
+              localStorage.removeItem("loto_sim_active");
+              localStorage.removeItem("loto_simulated_time");
+              setTrophyClicks(0);
+            }}
             
             currentUser={currentUser}
             isAdminLogged={isAdminLogged}
