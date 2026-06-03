@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Entity Schemas
+    function isValidRound(roundData) {
+      return roundData.keys().hasAll(['round', 'matches']) 
+        && roundData.keys().size() == 2
+        && roundData.round is int 
+        && roundData.round >= 1 
+        && roundData.round <= 38
+        && roundData.matches is list
+        && roundData.matches.size() <= 15;
+    }
+
+    // Rules for Admins Path
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() 
+        && adminId == request.auth.uid 
+        && request.auth.token.email == "thiagomedeiros.info@gmail.com"
+        && request.auth.token.email_verified == true;
+    }
+
+    // Rules for Rounds Path
+    match /rounds/{roundId} {
+      allow read: if true; // Publicly readable for all competitors
+      allow create, update: if (
+        isAdmin() 
+        && isValidId(roundId) 
+        && isValidRound(request.resource.data)
+      );
+      allow delete: if isAdmin();
+    }
+  }
+}

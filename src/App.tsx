@@ -10,15 +10,28 @@ import {
   Clipboard, 
   FileCheck,
   ChevronRight,
+  ChevronLeft,
+  ChevronDown,
   Info
 } from "lucide-react";
-import { brasileiraoMockData, round17Matches, round18Matches } from "./data/mockSoccerData";
+import { brasileiraoMockData, round17Matches, round18Matches, getMatchesForRound } from "./data/mockSoccerData";
 import { Match, UserPrediction, BetSlipSubmission } from "./types";
 import { TrophyHeader } from "./components/TrophyHeader";
 import { AdminPanel } from "./components/AdminPanel";
 import { MatchRow } from "./components/MatchRow";
 import { SecretModal } from "./components/SecretModal";
 import { RecentSlips } from "./components/RecentSlips";
+
+// Firebase Integration imports
+import { onAuthStateChanged, signInWithPopup, signOut } from "firebase/auth";
+import { auth, googleProvider } from "./lib/firebase";
+import { 
+  fetchAllRoundsFromFirestore, 
+  saveRoundToFirestore, 
+  checkIfUserIsAdmin, 
+  bootstrapAdminEmail, 
+  bootstrapRoundsToFirestore 
+} from "./lib/firebaseStore";
 
 // Default team emojis mappings for standard displays
 const TEAM_EMOJIS: Record<string, string> = {
@@ -44,8 +57,6 @@ const TEAM_EMOJIS: Record<string, string> = {
   "RB Bragantino": "🐂"
 };
 
-const allMatchesCombined = [...round17Matches, ...round18Matches];
-
 const sortMatchesChronologically = (matches: Match[]) => {
   return [...matches].sort((a, b) => {
     const dateA = new Date(`${a.date}T${a.time}:00-03:00`);
@@ -55,10 +66,124 @@ const sortMatchesChronologically = (matches: Match[]) => {
 };
 
 export default function App() {
+  // Firebase configuration and load states
+  const [firebaseLoading, setFirebaseLoading] = useState<boolean>(true);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [isAdminLogged, setIsAdminLogged] = useState<boolean>(false);
+  const [firebaseRoundsEmpty, setFirebaseRoundsEmpty] = useState<boolean>(false);
+
+  // Estado das partidas para todas as 38 rodadas do Brasileirão 2026
+  const [matchesState, setMatchesState] = useState<Record<number, Match[]>>(() => {
+    const saved = localStorage.getItem("loto_matches_overrides_v3");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Object.keys(parsed).length > 0) {
+          return parsed;
+        }
+      } catch { /* ignore */ }
+    }
+    const initialRounds: Record<number, Match[]> = {};
+    for (let r = 1; r <= 38; r++) {
+      initialRounds[r] = getMatchesForRound(r);
+    }
+    return initialRounds;
+  });
+
+  // Effect to load rounds dynamically from Firebase Firestore on Mount
+  useEffect(() => {
+    async function loadFirebaseData() {
+      try {
+        setFirebaseLoading(true);
+        const cloudRounds = await fetchAllRoundsFromFirestore();
+        if (cloudRounds) {
+          setMatchesState(cloudRounds);
+          setFirebaseRoundsEmpty(false);
+        } else {
+          setFirebaseRoundsEmpty(true);
+        }
+      } catch (err) {
+        console.error("Failed to load matches from Firebase:", err);
+      } finally {
+        setFirebaseLoading(false);
+      }
+    }
+    loadFirebaseData();
+  }, []);
+
+  // Effect to handle Admin Authentication & Privilege Validation via Google OAuth popup
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setCurrentUser(user);
+        // Automatic bootstrapping for current developer email address
+        if (user.email === "thiagomedeiros.info@gmail.com") {
+          try {
+            await bootstrapAdminEmail(user.uid, user.email);
+          } catch (e) {
+            console.error("Autobootstrap error:", e);
+          }
+        }
+        const hasAdminAccess = await checkIfUserIsAdmin(user.uid);
+        setIsAdminLogged(hasAdminAccess);
+      } else {
+        setCurrentUser(null);
+        setIsAdminLogged(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLoginWithGoogle = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (err) {
+      console.error("Login failed:", err);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
+  };
+
+  const handleBootstrapFirebase = async () => {
+    try {
+      setFirebaseLoading(true);
+      await bootstrapRoundsToFirestore(matchesState);
+      setFirebaseRoundsEmpty(false);
+      alert("Sucesso: Tabela de 38 rodadas e confrontos gravada no Firebase!");
+    } catch (err) {
+      alert("Falha no provisionamento: " + err);
+    } finally {
+      setFirebaseLoading(false);
+    }
+  };
+
+  const allMatchesCombined: Match[] = Object.values(matchesState).flat() as Match[];
+
   // Loaded state setup
   const [fullName, setFullName] = useState<string>(() => {
     return localStorage.getItem("loto_latest_name") || "";
   });
+
+  // Estado para a rodada selecionada no visual de tickets (Padrão: 17ª Rodada)
+  const [selectedRound, setSelectedRound] = useState<number>(() => {
+    const saved = localStorage.getItem("loto_selected_round");
+    if (saved) {
+      const num = parseInt(saved, 10);
+      if (num >= 1 && num <= 38) return num;
+    }
+    return 17; // Começa na 17ª Rodada por padrão
+  });
+
+  useEffect(() => {
+    localStorage.setItem("loto_selected_round", selectedRound.toString());
+  }, [selectedRound]);
 
   const [predictions, setPredictions] = useState<UserPrediction[]>(() => {
     let basePreds: UserPrediction[] = [];
@@ -88,20 +213,9 @@ export default function App() {
       } catch { /* ignore */ }
     }
 
+    // Inicializa palpites para todos os 380 confrontos, preservando palpites salvos
     return allMatchesCombined.map(m => {
-      const kickoff = new Date(`${m.date}T${m.time}:00-03:00`);
-      const isLocked = initCurrentActiveTime.getTime() >= kickoff.getTime();
       const foundSaved = basePreds.find(p => p.matchId === m.id);
-
-      if (isLocked) {
-        // Exclude / clear predictions for matches already started!
-        return {
-          matchId: m.id,
-          score1: "",
-          score2: ""
-        };
-      }
-
       return {
         matchId: m.id,
         score1: foundSaved ? foundSaved.score1 : "",
@@ -188,6 +302,31 @@ export default function App() {
 
   const currentActiveTime = getActiveCurrentTime();
 
+  // Computa a rodada ativa dinamicamente baseado nos jogos que já aconteceram (2h de duração)
+  const computeDynamicActiveRound = (): number => {
+    for (let r = 1; r <= 38; r++) {
+      const rMatches = matchesState[r] || [];
+      if (rMatches.length === 0) continue;
+      
+      const isAllCompleted = rMatches.every(m => {
+        const kickoff = new Date(`${m.date}T${m.time}:00-03:00`);
+        const completedTime = kickoff.getTime() + (2 * 60 * 60 * 1000); // 2 horas de jogo
+        return currentActiveTime.getTime() >= completedTime;
+      });
+      
+      if (!isAllCompleted) {
+        return r;
+      }
+    }
+    return 38; // Default para a última rodada se tudo acabou
+  };
+
+  const dynamicActiveRound = computeDynamicActiveRound();
+  
+  // Se o painel de administrador/simulador estiver aberto, foca na rodada selecionada pelo admin.
+  // Caso contrário, foca estritamente na rodada ativa calculada.
+  const viewedRound = showSimulator ? selectedRound : dynamicActiveRound;
+
   // Find next upcoming match kickoff (for countdown display)
   const getNextKickoffDistance = () => {
     let nextMatch: Match | null = null;
@@ -251,28 +390,27 @@ export default function App() {
     return getMatchLockStatus(match).isLocked;
   };
 
-  const allRound17Started = round17Matches.every(isMatchStarted);
-
   // Determine current active main matches and round name
   const activeRoundMatches = sortMatchesChronologically(
-    allRound17Started ? round18Matches : round17Matches
+    matchesState[viewedRound] || []
   );
-  const activeRoundName = allRound17Started ? "18ª Rodada" : "17ª Rodada";
+  const activeRoundName = `${viewedRound}ª Rodada`;
 
-  // Compute which Round 18 matches appear in the dynamic preview section (Optional)
-  const startedRound17Teams = new Set<string>();
-  if (!allRound17Started) {
-    round17Matches.forEach(m => {
-      if (isMatchStarted(m)) {
-        startedRound17Teams.add(m.team1);
-        startedRound17Teams.add(m.team2);
-      }
-    });
-  }
+  // Próxima rodada (se houver) para visualização opcional
+  // Regra de negócio: as prévias de confrontos da próxima rodada vão aparecendo
+  // conforme os jogos da rodada atual vão iniciando e fechando os palpites
+  const startedCurrentRoundTeams = new Set<string>();
+  const currentRoundMatches = matchesState[viewedRound] || [];
+  currentRoundMatches.forEach(m => {
+    if (isMatchStarted(m)) {
+      startedCurrentRoundTeams.add(m.team1);
+      startedCurrentRoundTeams.add(m.team2);
+    }
+  });
 
-  const previewMatches = !allRound17Started
-    ? sortMatchesChronologically(
-        round18Matches.filter(m => startedRound17Teams.has(m.team1) || startedRound17Teams.has(m.team2))
+  const previewMatches = viewedRound < 38
+    ? sortMatchesChronologically(matchesState[viewedRound + 1] || []).filter(m =>
+        startedCurrentRoundTeams.has(m.team1) || startedCurrentRoundTeams.has(m.team2)
       )
     : [];
 
@@ -384,6 +522,69 @@ export default function App() {
     setSimulatedActive(true);
     localStorage.setItem("loto_sim_active", "true");
     localStorage.setItem("loto_simulated_time", val);
+  };
+
+  // Upgraded dynamic matches management handlers with Cloud Firestore persistence support
+  const handleUpdateMatchTime = async (matchId: string, newDate: string, newTime: string) => {
+    const updated = { ...matchesState };
+    let affectedRoundNum = -1;
+    // Encontra e atualiza a partida correspondente em qualquer rodada
+    for (let r = 1; r <= 38; r++) {
+      if (updated[r]) {
+        const found = updated[r].some(m => m.id === matchId);
+        if (found) {
+          updated[r] = updated[r].map(m => m.id === matchId ? { ...m, date: newDate, time: newTime } : m);
+          affectedRoundNum = r;
+        }
+      }
+    }
+    setMatchesState(updated);
+    localStorage.setItem("loto_matches_overrides_v3", JSON.stringify(updated));
+
+    // Persist modification on Firebase if administrator is currently connected
+    if (isAdminLogged && affectedRoundNum !== -1) {
+      try {
+        await saveRoundToFirestore(affectedRoundNum, updated[affectedRoundNum]);
+      } catch (err) {
+        console.error("Failed to write manual schedule modification to Firebase:", err);
+      }
+    }
+  };
+
+  const handleResetAllMatches = async () => {
+    localStorage.removeItem("loto_matches_overrides_v3");
+    const initialRounds: Record<number, Match[]> = {};
+    for (let r = 1; r <= 38; r++) {
+      initialRounds[r] = getMatchesForRound(r);
+    }
+    setMatchesState(initialRounds);
+
+    if (isAdminLogged) {
+      try {
+        await bootstrapRoundsToFirestore(initialRounds);
+        setFirebaseRoundsEmpty(false);
+      } catch (err) {
+        console.error("Failed to reset all matches in Firebase:", err);
+      }
+    }
+  };
+
+  const handleSyncAPI = async (roundNum: number, syncedMatches: Match[]) => {
+    const updated = {
+      ...matchesState,
+      [roundNum]: syncedMatches
+    };
+    setMatchesState(updated);
+    localStorage.setItem("loto_matches_overrides_v3", JSON.stringify(updated));
+
+    if (isAdminLogged) {
+      try {
+        await saveRoundToFirestore(roundNum, syncedMatches);
+        setFirebaseRoundsEmpty(false);
+      } catch (err) {
+        console.error("Failed to save synchronized matches to Firebase:", err);
+      }
+    }
   };
 
   // Módulo 5: Clear Form + Surpresinha logic
@@ -659,6 +860,20 @@ export default function App() {
             onQuickTravel={handleQuickTravel}
             realTimeFormatted={formatTimeToShow(realTime)}
             simulatedActive={simulatedActive}
+            activeRound={selectedRound}
+            matches={sortMatchesChronologically(matchesState[selectedRound] || [])}
+            onUpdateMatchTime={handleUpdateMatchTime}
+            onResetAllMatches={handleResetAllMatches}
+            onSyncAPI={handleSyncAPI}
+            onChangeActiveRound={setSelectedRound}
+            
+            currentUser={currentUser}
+            isAdminLogged={isAdminLogged}
+            firebaseRoundsEmpty={firebaseRoundsEmpty}
+            onLoginWithGoogle={handleLoginWithGoogle}
+            onLogout={handleLogout}
+            onBootstrapFirebase={handleBootstrapFirebase}
+            isFirebaseLoading={firebaseLoading}
           />
         )}
 

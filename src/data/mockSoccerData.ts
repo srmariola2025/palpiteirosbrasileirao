@@ -232,3 +232,121 @@ export const brasileiraoMockData: CompetitionData = {
   round: "17ª Rodada",
   matches: round17Matches
 };
+
+// Mapeamento de estádios padrões por equipe do Brasileirão
+export const STADIUMS_MAP: Record<string, string> = {
+  "São Paulo": "MorumBIS, São Paulo",
+  "Botafogo": "Nilton Santos, Rio de Janeiro",
+  "Vitória": "Barradão, Salvador",
+  "Internacional": "Beira-Rio, Porto Alegre",
+  "Grêmio": "Arena do Grêmio, Porto Alegre",
+  "Santos": "Vila Belmiro, Santos",
+  "Mirassol": "Maião, Mirassol",
+  "Fluminense": "Maracanã, Rio de Janeiro",
+  "Flamengo": "Maracanã, Rio de Janeiro",
+  "Palmeiras": "Allianz Parque, São Paulo",
+  "Cruzeiro": "Mineirão, Belo Horizonte",
+  "Chapecoense": "Arena Condá, Chapecó",
+  "Remo": "Baenão, Belém",
+  "Athletico-PR": "Ligga Arena, Curitiba",
+  "Corinthians": "Neo Química Arena, São Paulo",
+  "Atlético-MG": "Arena MRV, Belo Horizonte",
+  "Vasco da Gama": "São Januário, Rio de Janeiro",
+  "RB Bragantino": "Nabizão, Bragança Paulista",
+  "Coritiba": "Couto Pereira, Curitiba",
+  "Bahia": "Arena Fonte Nova, Salvador"
+};
+
+const TEAMS_LIST = [
+  "São Paulo", "Botafogo", "Vitória", "Internacional", "Grêmio", "Santos", 
+  "Mirassol", "Fluminense", "Flamengo", "Palmeiras", "Cruzeiro", "Chapecoense", 
+  "Remo", "Athletico-PR", "Corinthians", "Atlético-MG", "Vasco da Gama", 
+  "RB Bragantino", "Coritiba", "Bahia"
+];
+
+// Gera confrontos de forma determinística usando o Algoritmo Round-Robin (Círculo)
+export const getMatchesForRound = (roundNum: number): Match[] => {
+  if (roundNum === 17) {
+    return round17Matches;
+  }
+  if (roundNum === 18) {
+    return round18Matches;
+  }
+
+  const matches: Match[] = [];
+  const n = TEAMS_LIST.length;
+  const list = [...TEAMS_LIST];
+  
+  // Rotação determinística para as primeiras 19 rodadas (Turno)
+  const r = (roundNum - 1) % 19;
+  const rotated = [list[0], ...list.slice(1 + r), ...list.slice(1, 1 + r)];
+  
+  // Lista de horários usuais das rodadas
+  const kickOffTimes = [
+    "16:00", "16:00", "17:00", "19:00", "21:00", // Sábado
+    "11:00", "16:00", "16:00", "18:30", "20:30"  // Domingo
+  ];
+
+  // Calcula a data base baseando-se no desvio da Rodada 17 (23 de Maio de 2026)
+  const baseSaturday = new Date("2026-05-23T12:00:00-03:00");
+  const weeksOffset = roundNum - 17;
+  const targetSaturdayTime = baseSaturday.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
+  const saturdayDateObj = new Date(targetSaturdayTime);
+  
+  const formatDateString = (d: Date): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const saturdayStr = formatDateString(saturdayDateObj);
+  
+  const sundayShift = new Date(saturdayDateObj.getTime() + (24 * 60 * 60 * 1000));
+  const sundayStr = formatDateString(sundayShift);
+
+  for (let i = 0; i < n / 2; i++) {
+    // Determina mandante e visitante do Turno
+    let home = rotated[i];
+    let away = rotated[n - 1 - i];
+    
+    // Inverte mando no Returno (Rodadas 20 a 38)
+    if (roundNum > 19) {
+      const temp = home;
+      home = away;
+      away = temp;
+    }
+
+    // Distribui 5 jogos no sábado (index 0 a 4) e 5 no domingo (index 5 a 9)
+    const isSunday = i >= 5;
+    const matchDate = isSunday ? sundayStr : saturdayStr;
+    const matchTime = kickOffTimes[i];
+
+    // Calcula probabilidades baseadas nas qualidades dos times de forma realista e determinística
+    const pseudoRand = (home.length * 5 + away.length * 3 + roundNum + i) % 20;
+    const probHome = 40 + (pseudoRand % 15);
+    const probAway = 20 + ((pseudoRand * 7) % 15);
+    const probDraw = 100 - probHome - probAway;
+
+    matches.push({
+      id: `br2026-r${roundNum}-${i + 1}`,
+      date: matchDate,
+      time: matchTime,
+      team1: home,
+      team2: away,
+      stadium: STADIUMS_MAP[home] || "Estádio Nacional, Brasil",
+      roundName: `${roundNum}ª Rodada`,
+      probHome,
+      probDraw,
+      probAway
+    });
+  }
+
+  // Ordena cronologicamente para exibição padrão
+  return matches.sort((a, b) => {
+    const dateA = new Date(`${a.date}T${a.time}:00-03:00`);
+    const dateB = new Date(`${b.date}T${b.time}:00-03:00`);
+    return dateA.getTime() - dateB.getTime();
+  });
+};
+

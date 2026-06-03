@@ -1,0 +1,47 @@
+{
+  "entities": {
+    "Admin": {
+      "title": "Admin",
+      "description": "Represents an authorized administrator who can modify schedules.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "description": "The administrative email address"
+        }
+      },
+      "required": [
+        "email"
+      ]
+    },
+    "Round": {
+      "title": "Round",
+      "description": "Represents a single round of the Brasileirao championship containing matches.",
+      "type": "object",
+      "properties": {
+        "round": {
+          "type": "integer",
+          "description": "The round number (1 to 38)"
+        },
+        "matches": {
+          "type": "array",
+          "description": "The list of matches belonging to this round"
+        }
+      },
+      "required": [
+        "round",
+        "matches"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Authorized administrators list."
+    },
+    "/rounds/{roundId}": {
+      "schema": "Round",
+      "description": "Documents representing each of the 38 rounds of the championship."
+    }
+  }
+}
