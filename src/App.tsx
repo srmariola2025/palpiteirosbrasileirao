@@ -97,26 +97,6 @@ export default function App() {
         setFirebaseLoading(true);
         const cloudRounds = await fetchAllRoundsFromFirestore();
         if (cloudRounds) {
-          // Check if cloudRounds needs correction (outdated dates or matchups)
-          let needsForceUpdate = false;
-          const r19 = cloudRounds[19];
-          if (r19 && r19.length > 0) {
-            const hasJuneDate = r19.some(m => m.date.includes("-06-"));
-            const hasWrongTeam = r19[0]?.team1 !== "Fluminense" && r19[0]?.team1 !== "RB Bragantino" && r19[0]?.team2 !== "Fluminense" && r19[0]?.team2 !== "RB Bragantino";
-            if (hasJuneDate || hasWrongTeam) {
-              needsForceUpdate = true;
-            }
-          } else {
-            needsForceUpdate = true;
-          }
-
-          if (needsForceUpdate) {
-            console.log("Detectadas informações desatualizadas no banco para a 19ª Rodada. Corrigindo em memória...");
-            for (let r = 17; r <= 38; r++) {
-              cloudRounds[r] = getMatchesForRound(r);
-            }
-          }
-
           setMatchesState(cloudRounds);
           setFirebaseRoundsEmpty(false);
         } else {
@@ -154,45 +134,6 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
-
-  // Automatic database repair if Admin is logged in and there is a structural discrepancy
-  useEffect(() => {
-    if (isAdminLogged) {
-      async function autoFixDatabase() {
-        try {
-          const cloudRounds = await fetchAllRoundsFromFirestore();
-          if (cloudRounds) {
-            const r19 = cloudRounds[19];
-            let needsRepair = false;
-            if (r19 && r19.length > 0) {
-              const hasJuneDate = r19.some(m => m.date.includes("-06-"));
-              const hasWrongTeam = r19[0]?.team1 !== "Fluminense" && r19[0]?.team1 !== "RB Bragantino" && r19[0]?.team2 !== "Fluminense" && r19[0]?.team2 !== "RB Bragantino";
-              if (hasJuneDate || hasWrongTeam) {
-                needsRepair = true;
-              }
-            } else {
-              needsRepair = true;
-            }
-
-            if (needsRepair) {
-              console.log("Admin detectado: Corrigindo e forçando dados de rodadas atualizados e cronologia correta no Firebase...");
-              const repairedRounds: Record<number, Match[]> = { ...cloudRounds };
-              for (let r = 1; r <= 38; r++) {
-                repairedRounds[r] = getMatchesForRound(r);
-              }
-              await bootstrapRoundsToFirestore(repairedRounds);
-              setMatchesState(repairedRounds);
-              setFirebaseRoundsEmpty(false);
-              console.log("Firebase Database corrigido com sucesso!");
-            }
-          }
-        } catch (repairErr) {
-          console.error("Failed to auto-repair Firestore database:", repairErr);
-        }
-      }
-      autoFixDatabase();
-    }
-  }, [isAdminLogged]);
 
   const handleLoginWithGoogle = async () => {
     try {
@@ -672,6 +613,132 @@ export default function App() {
     }
   };
 
+  const handleSyncAllRounds = async (onProgress: (status: string) => void) => {
+    onProgress("⏳ Iniciando sincronização em lote (Rodadas 19 a 38)...");
+    
+    const updated = { ...matchesState };
+    
+    const normalizeTeamName = (name: string): string => {
+      return name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // remove accents
+        .replace(/[^a-z0-9]/g, "")     // letters/digits only
+        .replace("esporteclubevitoria", "vitoria")
+        .replace("gremiofbpa", "gremio")
+        .replace("botafogorj", "botafogo")
+        .replace("saopaulo", "saopaulo")
+        .replace("redbullbragantino", "rbbragantino")
+        .replace("bragantino", "rbbragantino")
+        .replace("atleticoparanaense", "athleticopr")
+        .replace("atleticopr", "athleticopr")
+        .replace("atleticoclubemineiro", "atleticomg")
+        .replace("atleticomineiro", "atleticomg")
+        .replace("atleticomg", "atleticomg")
+        .replace("vascodagama", "vascodagama")
+        .replace("vasco", "vascodagama")
+        .replace("chapecoenseaf", "chapecoense");
+    };
+
+    const localTeamsPool = [
+      "São Paulo", "Botafogo", "Vitória", "Internacional", "Grêmio", "Santos", 
+      "Mirassol", "Fluminense", "Flamengo", "Palmeiras", "Cruzeiro", "Chapecoense", 
+      "Remo", "Athletico-PR", "Corinthians", "Atlético-MG", "Vasco da Gama", 
+      "RB Bragantino", "Coritiba", "Bahia"
+    ];
+
+    const mapApiTeamName = (foreignName: string): string => {
+      const foreignNorm = normalizeTeamName(foreignName);
+      for (const localTeam of localTeamsPool) {
+        const localNorm = normalizeTeamName(localTeam);
+        if (foreignNorm === localNorm || foreignNorm.includes(localNorm) || localNorm.includes(foreignNorm)) {
+          return localTeam;
+        }
+      }
+      return foreignName;
+    };
+
+    // Loop sincronizado rodada a rodada de 19 a 38
+    for (let r = 19; r <= 38; r++) {
+      onProgress(`\n🔄 Sincronizando Rodada ${r}/38...`);
+      try {
+        const res = await fetch(`/api/sync-ge/${r}`);
+        let responseData: any = null;
+        if (res.ok) {
+          responseData = await res.json();
+        } else {
+          responseData = getMatchesForRound(r);
+        }
+
+        let gamesList: any[] = [];
+        if (Array.isArray(responseData)) {
+          gamesList = responseData;
+        } else if (responseData && Array.isArray(responseData.jogos)) {
+          gamesList = responseData.jogos;
+        } else if (responseData && typeof responseData === 'object') {
+          const foundArray = Object.values(responseData).find(val => Array.isArray(val));
+          if (foundArray) {
+            gamesList = foundArray;
+          }
+        }
+
+        if (gamesList.length > 0) {
+          const currentMatches = [...(updated[r] || getMatchesForRound(r))];
+          let matchedCount = 0;
+
+          gamesList.forEach((g: any) => {
+            const mandanteName = g.equipes?.mandante?.nome_popular || g.equipes?.mandante?.nome || "";
+            const visitanteName = g.equipes?.visitante?.nome_popular || g.equipes?.visitante?.nome || "";
+
+            if (!mandanteName || !visitanteName) return;
+
+            const mappedHome = mapApiTeamName(mandanteName);
+            const mappedAway = mapApiTeamName(visitanteName);
+
+            const localIndex = currentMatches.findIndex(
+              m => normalizeTeamName(m.team1) === normalizeTeamName(mappedHome) &&
+                   normalizeTeamName(m.team2) === normalizeTeamName(mappedAway)
+            );
+
+            if (localIndex !== -1) {
+              const currentMatch = currentMatches[localIndex];
+              const rawDate = g.data_realizacao || g.data_jogo || "";
+              const parsedDate = rawDate ? rawDate.substring(0, 10) : currentMatch.date;
+              const parsedTime = g.hora_realizacao || g.hora_jogo || currentMatch.time;
+              const parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || currentMatch.stadium;
+
+              currentMatches[localIndex] = {
+                ...currentMatch,
+                date: parsedDate,
+                time: parsedTime,
+                stadium: parsedStadium || currentMatch.stadium
+              };
+              matchedCount++;
+            }
+          });
+
+          updated[r] = currentMatches;
+          
+          if (isAdminLogged) {
+            await saveRoundToFirestore(r, currentMatches);
+          }
+          onProgress(`➔ Rodada ${r} concluída! Pareou e atualizou (${matchedCount}) partidas.`);
+        } else {
+          onProgress(`⚠️ Rodada ${r} não retornou nenhum confronto válido.`);
+        }
+      } catch (err: any) {
+        onProgress(`❌ Erro crítico ao sincronizar Rodada ${r}: ${err.message || err}`);
+      }
+    }
+
+    setMatchesState(updated);
+    localStorage.setItem("loto_matches_overrides_v3", JSON.stringify(updated));
+    if (isAdminLogged) {
+      setFirebaseRoundsEmpty(false);
+    }
+    onProgress(`\n✨ SUCESSO COMPLETO! Todas as rodadas da 19ª à 38ª rodada foram sincronizadas com o Globo Esporte e salvas ${isAdminLogged ? "no Firestore em nuvem para todos" : "localmente no seu navegador"}!`);
+  };
+
   // Módulo 5: Clear Form + Surpresinha logic
   const handleClearSlip = () => {
     const nextCleans = cleanClicks + 1;
@@ -962,6 +1029,7 @@ export default function App() {
             onLogout={handleLogout}
             onBootstrapFirebase={handleBootstrapFirebase}
             isFirebaseLoading={firebaseLoading}
+            onSyncAllRounds={handleSyncAllRounds}
           />
         )}
 

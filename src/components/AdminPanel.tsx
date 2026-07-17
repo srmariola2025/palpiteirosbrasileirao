@@ -38,6 +38,8 @@ interface AdminPanelProps {
   onLogout: () => Promise<void>;
   onBootstrapFirebase: () => Promise<void>;
   isFirebaseLoading: boolean;
+
+  onSyncAllRounds: (onProgress: (status: string) => void) => Promise<void>;
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
@@ -55,7 +57,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   onLoginWithGoogle,
   onLogout,
   onBootstrapFirebase,
-  isFirebaseLoading
+  isFirebaseLoading,
+  onSyncAllRounds
 }) => {
   const [showHelp, setShowHelp] = useState(false);
   const [showManualEditor, setShowManualEditor] = useState(false);
@@ -74,6 +77,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   const [geSyncLoading, setGeSyncLoading] = useState(false);
   const [geSyncStatus, setGeSyncStatus] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  // Batch Sync (R19 to R38) state
+  const [syncAllLoading, setSyncAllLoading] = useState(false);
+  const [syncAllStatus, setSyncAllStatus] = useState<string | null>(null);
+
+  const handleSyncAllClick = async () => {
+    setSyncAllLoading(true);
+    setSyncAllStatus("⏳ Iniciando sincronização em lote (Rodadas 19 a 38)...");
+    try {
+      await onSyncAllRounds((progressMsg: string) => {
+        setSyncAllStatus(prev => {
+          if (!prev) return progressMsg;
+          // Limita tamanho para não sobrecarregar
+          const lines = prev.split("\n");
+          if (lines.length > 300) {
+            return `${lines.slice(-300).join("\n")}\n${progressMsg}`;
+          }
+          return `${prev}\n${progressMsg}`;
+        });
+      });
+    } catch (err: any) {
+      setSyncAllStatus(prev => `${prev}\n❌ Falha na sincronização completa: ${err.message || err}`);
+    } finally {
+      setSyncAllLoading(false);
+    }
+  };
 
   // String normalization for robust team matching
   const normalizeTeamName = (name: string): string => {
@@ -123,44 +152,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     if (roundNum === 19) {
       return [
         {
-          equipes: { mandante: { nome_popular: "Fluminense", nome: "Fluminense" }, visitante: { nome_popular: "RB Bragantino", nome: "RB Bragantino" } },
-          data_realizacao: "2026-07-22T16:00:00", hora_realizacao: "16:00", sede: { nome_popular: "Maracanã" }
-        },
-        {
           equipes: { mandante: { nome_popular: "Botafogo", nome: "Botafogo" }, visitante: { nome_popular: "Santos", nome: "Santos" } },
-          data_realizacao: "2026-07-22T17:00:00", hora_realizacao: "17:00", sede: { nome_popular: "Nilton Santos" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "São Paulo", nome: "São Paulo" }, visitante: { nome_popular: "Athletico-PR", nome: "Athletico-PR" } },
-          data_realizacao: "2026-07-22T18:00:00", hora_realizacao: "18:00", sede: { nome_popular: "MorumBIS" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Corinthians", nome: "Corinthians" }, visitante: { nome_popular: "Remo", nome: "Remo" } },
-          data_realizacao: "2026-07-22T19:00:00", hora_realizacao: "19:00", sede: { nome_popular: "Neo Química Arena" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Mirassol", nome: "Mirassol" }, visitante: { nome_popular: "Grêmio", nome: "Grêmio" } },
-          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Maião" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Atlético-MG", nome: "Atlético-MG" }, visitante: { nome_popular: "Bahia", nome: "Bahia" } },
-          data_realizacao: "2026-07-22T11:00:00", hora_realizacao: "11:00", sede: { nome_popular: "Arena MRV" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Internacional", nome: "Internacional" }, visitante: { nome_popular: "Cruzeiro", nome: "Cruzeiro" } },
-          data_realizacao: "2026-07-22T16:00:00", hora_realizacao: "16:00", sede: { nome_popular: "Beira-Rio" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Coritiba", nome: "Coritiba" }, visitante: { nome_popular: "Palmeiras", nome: "Palmeiras" } },
-          data_realizacao: "2026-07-22T18:30:00", hora_realizacao: "18:30", sede: { nome_popular: "Couto Pereira" }
+          data_realizacao: "2026-07-16T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Nilton Santos" }
         },
         {
           equipes: { mandante: { nome_popular: "Vitória", nome: "Vitória" }, visitante: { nome_popular: "Vasco da Gama", nome: "Vasco da Gama" } },
-          data_realizacao: "2026-07-22T20:30:00", hora_realizacao: "20:30", sede: { nome_popular: "Barradão" }
+          data_realizacao: "2026-07-16T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Barradão" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Fluminense", nome: "Fluminense" }, visitante: { nome_popular: "RB Bragantino", nome: "RB Bragantino" } },
+          data_realizacao: "2026-07-17T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Maracanã" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Mirassol", nome: "Mirassol" }, visitante: { nome_popular: "Grêmio", nome: "Grêmio" } },
+          data_realizacao: "2026-07-17T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Maião" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Atlético-MG", nome: "Atlético-MG" }, visitante: { nome_popular: "Bahia", nome: "Bahia" } },
+          data_realizacao: "2026-07-21T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Arena MRV" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Coritiba", nome: "Coritiba" }, visitante: { nome_popular: "Palmeiras", nome: "Palmeiras" } },
+          data_realizacao: "2026-07-22T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Couto Pereira" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "São Paulo", nome: "São Paulo" }, visitante: { nome_popular: "Athletico-PR", nome: "Athletico-PR" } },
+          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "MorumBIS" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Internacional", nome: "Internacional" }, visitante: { nome_popular: "Cruzeiro", nome: "Cruzeiro" } },
+          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Beira-Rio" }
         },
         {
           equipes: { mandante: { nome_popular: "Chapecoense", nome: "Chapecoense" }, visitante: { nome_popular: "Flamengo", nome: "Flamengo" } },
-          data_realizacao: "2026-07-22T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Arena Condá" }
+          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Arena Condá" }
+        },
+        {
+          equipes: { mandante: { nome_popular: "Corinthians", nome: "Corinthians" }, visitante: { nome_popular: "Remo", nome: "Remo" } },
+          data_realizacao: "2026-07-23T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Neo Química Arena" }
         }
       ];
     }
@@ -746,11 +775,22 @@ ${cleanMatches(matches)}
                 <button
                   type="button"
                   onClick={handleSyncFromGE}
-                  disabled={geSyncLoading}
+                  disabled={geSyncLoading || syncAllLoading}
                   className="bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-800 text-neutral-950 font-black tracking-wider uppercase py-2 px-5 rounded transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border border-emerald-500"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${geSyncLoading ? 'animate-spin' : ''}`} />
-                  <span>{geSyncLoading ? "Sincronizando..." : "Sincronizar com Globo Esporte"}</span>
+                  <span>{geSyncLoading ? "Sincronizando..." : `Sincronizar Rodada ${activeRound}`}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSyncAllClick}
+                  disabled={geSyncLoading || syncAllLoading}
+                  className="bg-yellow-500 hover:bg-yellow-400 disabled:bg-neutral-800 text-neutral-950 font-black tracking-wider uppercase py-2 px-5 rounded transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono border border-yellow-500"
+                  title="Sincroniza automaticamente todas as rodadas da 19ª à 38ª salvando no Firestore se admin estiver logado"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${syncAllLoading ? 'animate-spin' : ''}`} />
+                  <span>{syncAllLoading ? "Sincronizando Tudo..." : "Sincronizar Tudo (19ª à 38ª)"}</span>
                 </button>
 
                 <p className="text-[9px] text-neutral-400 font-mono">
@@ -761,6 +801,16 @@ ${cleanMatches(matches)}
               {geSyncStatus && (
                 <div className="p-2.5 bg-neutral-950 border border-neutral-800 rounded font-mono text-[10px] text-emerald-400 select-text whitespace-pre-wrap max-h-60 overflow-y-auto leading-relaxed">
                   {geSyncStatus}
+                </div>
+              )}
+
+              {syncAllStatus && (
+                <div className="p-2.5 bg-neutral-950 border border-neutral-800 rounded font-mono text-[10px] text-yellow-500 select-text whitespace-pre-wrap max-h-60 overflow-y-auto leading-relaxed">
+                  <div className="font-bold text-white mb-1 uppercase tracking-widest text-[9px] border-b border-neutral-800 pb-1 flex items-center justify-between">
+                    <span>📋 Console de Progresso - Sincronização em Lote</span>
+                    {syncAllLoading && <span className="animate-pulse text-yellow-400">EXECUTANDO...</span>}
+                  </div>
+                  {syncAllStatus}
                 </div>
               )}
             </div>

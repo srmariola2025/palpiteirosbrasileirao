@@ -10,44 +10,44 @@ function generateFallbackGamesForRound(roundNum: number) {
   if (roundNum === 19) {
     return [
       {
-        equipes: { mandante: { nome_popular: "Fluminense", nome: "Fluminense" }, visitante: { nome_popular: "RB Bragantino", nome: "RB Bragantino" } },
-        data_realizacao: "2026-07-22T16:00:00", hora_realizacao: "16:00", sede: { nome_popular: "Maracanã" }
-      },
-      {
         equipes: { mandante: { nome_popular: "Botafogo", nome: "Botafogo" }, visitante: { nome_popular: "Santos", nome: "Santos" } },
-        data_realizacao: "2026-07-22T17:00:00", hora_realizacao: "17:00", sede: { nome_popular: "Nilton Santos" }
-      },
-      {
-        equipes: { mandante: { nome_popular: "São Paulo", nome: "São Paulo" }, visitante: { nome_popular: "Athletico-PR", nome: "Athletico-PR" } },
-        data_realizacao: "2026-07-22T18:00:00", hora_realizacao: "18:00", sede: { nome_popular: "MorumBIS" }
-      },
-      {
-        equipes: { mandante: { nome_popular: "Corinthians", nome: "Corinthians" }, visitante: { nome_popular: "Remo", nome: "Remo" } },
-        data_realizacao: "2026-07-22T19:00:00", hora_realizacao: "19:00", sede: { nome_popular: "Neo Química Arena" }
-      },
-      {
-        equipes: { mandante: { nome_popular: "Mirassol", nome: "Mirassol" }, visitante: { nome_popular: "Grêmio", nome: "Grêmio" } },
-        data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Maião" }
-      },
-      {
-        equipes: { mandante: { nome_popular: "Atlético-MG", nome: "Atlético-MG" }, visitante: { nome_popular: "Bahia", nome: "Bahia" } },
-        data_realizacao: "2026-07-22T11:00:00", hora_realizacao: "11:00", sede: { nome_popular: "Arena MRV" }
-      },
-      {
-        equipes: { mandante: { nome_popular: "Internacional", nome: "Internacional" }, visitante: { nome_popular: "Cruzeiro", nome: "Cruzeiro" } },
-        data_realizacao: "2026-07-22T16:00:00", hora_realizacao: "16:00", sede: { nome_popular: "Beira-Rio" }
-      },
-      {
-        equipes: { mandante: { nome_popular: "Coritiba", nome: "Coritiba" }, visitante: { nome_popular: "Palmeiras", nome: "Palmeiras" } },
-        data_realizacao: "2026-07-22T18:30:00", hora_realizacao: "18:30", sede: { nome_popular: "Couto Pereira" }
+        data_realizacao: "2026-07-16T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Nilton Santos" }
       },
       {
         equipes: { mandante: { nome_popular: "Vitória", nome: "Vitória" }, visitante: { nome_popular: "Vasco da Gama", nome: "Vasco da Gama" } },
-        data_realizacao: "2026-07-22T20:30:00", hora_realizacao: "20:30", sede: { nome_popular: "Barradão" }
+        data_realizacao: "2026-07-16T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Barradão" }
+      },
+      {
+        equipes: { mandante: { nome_popular: "Fluminense", nome: "Fluminense" }, visitante: { nome_popular: "RB Bragantino", nome: "RB Bragantino" } },
+        data_realizacao: "2026-07-17T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Maracanã" }
+      },
+      {
+        equipes: { mandante: { nome_popular: "Mirassol", nome: "Mirassol" }, visitante: { nome_popular: "Grêmio", nome: "Grêmio" } },
+        data_realizacao: "2026-07-17T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Maião" }
+      },
+      {
+        equipes: { mandante: { nome_popular: "Atlético-MG", nome: "Atlético-MG" }, visitante: { nome_popular: "Bahia", nome: "Bahia" } },
+        data_realizacao: "2026-07-21T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Arena MRV" }
+      },
+      {
+        equipes: { mandante: { nome_popular: "Coritiba", nome: "Coritiba" }, visitante: { nome_popular: "Palmeiras", nome: "Palmeiras" } },
+        data_realizacao: "2026-07-22T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Couto Pereira" }
+      },
+      {
+        equipes: { mandante: { nome_popular: "São Paulo", nome: "São Paulo" }, visitante: { nome_popular: "Athletico-PR", nome: "Athletico-PR" } },
+        data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "MorumBIS" }
+      },
+      {
+        equipes: { mandante: { nome_popular: "Internacional", nome: "Internacional" }, visitante: { nome_popular: "Cruzeiro", nome: "Cruzeiro" } },
+        data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Beira-Rio" }
       },
       {
         equipes: { mandante: { nome_popular: "Chapecoense", nome: "Chapecoense" }, visitante: { nome_popular: "Flamengo", nome: "Flamengo" } },
-        data_realizacao: "2026-07-22T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Arena Condá" }
+        data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Arena Condá" }
+      },
+      {
+        equipes: { mandante: { nome_popular: "Corinthians", nome: "Corinthians" }, visitante: { nome_popular: "Remo", nome: "Remo" } },
+        data_realizacao: "2026-07-23T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Neo Química Arena" }
       }
     ];
   }

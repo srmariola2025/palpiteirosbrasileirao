@@ -228,20 +228,9 @@ export const round18Matches: Match[] = [
 
 export const round19Matches: Match[] = [
   {
-    id: "br2026-r19-1",
-    date: "2026-07-22",
-    time: "16:00",
-    team1: "Fluminense",
-    team2: "RB Bragantino",
-    stadium: "Maracanã, Rio de Janeiro",
-    probHome: 45,
-    probDraw: 28,
-    probAway: 27
-  },
-  {
     id: "br2026-r19-2",
-    date: "2026-07-22",
-    time: "17:00",
+    date: "2026-07-16",
+    time: "19:30",
     team1: "Botafogo",
     team2: "Santos",
     stadium: "Nilton Santos, Rio de Janeiro",
@@ -250,31 +239,31 @@ export const round19Matches: Match[] = [
     probAway: 23
   },
   {
-    id: "br2026-r19-3",
-    date: "2026-07-22",
-    time: "18:00",
-    team1: "São Paulo",
-    team2: "Athletico-PR",
-    stadium: "MorumBIS, São Paulo",
-    probHome: 44,
-    probDraw: 31,
-    probAway: 25
+    id: "br2026-r19-9",
+    date: "2026-07-16",
+    time: "19:30",
+    team1: "Vitória",
+    team2: "Vasco da Gama",
+    stadium: "Barradão, Salvador",
+    probHome: 39,
+    probDraw: 30,
+    probAway: 31
   },
   {
-    id: "br2026-r19-4",
-    date: "2026-07-22",
-    time: "19:00",
-    team1: "Corinthians",
-    team2: "Remo",
-    stadium: "Neo Química Arena, São Paulo",
-    probHome: 55,
+    id: "br2026-r19-1",
+    date: "2026-07-17",
+    time: "20:00",
+    team1: "Fluminense",
+    team2: "RB Bragantino",
+    stadium: "Maracanã, Rio de Janeiro",
+    probHome: 45,
     probDraw: 28,
-    probAway: 17
+    probAway: 27
   },
   {
     id: "br2026-r19-5",
-    date: "2026-07-22",
-    time: "21:30",
+    date: "2026-07-17",
+    time: "20:00",
     team1: "Mirassol",
     team2: "Grêmio",
     stadium: "Maião, Mirassol",
@@ -284,8 +273,8 @@ export const round19Matches: Match[] = [
   },
   {
     id: "br2026-r19-6",
-    date: "2026-07-22",
-    time: "11:00",
+    date: "2026-07-21",
+    time: "19:30",
     team1: "Atlético-MG",
     team2: "Bahia",
     stadium: "Arena MRV, Belo Horizonte",
@@ -294,20 +283,9 @@ export const round19Matches: Match[] = [
     probAway: 24
   },
   {
-    id: "br2026-r19-7",
-    date: "2026-07-22",
-    time: "16:00",
-    team1: "Internacional",
-    team2: "Cruzeiro",
-    stadium: "Beira-Rio, Porto Alegre",
-    probHome: 43,
-    probDraw: 31,
-    probAway: 26
-  },
-  {
     id: "br2026-r19-8",
     date: "2026-07-22",
-    time: "18:30",
+    time: "19:30",
     team1: "Coritiba",
     team2: "Palmeiras",
     stadium: "Couto Pereira, Curitiba",
@@ -316,26 +294,48 @@ export const round19Matches: Match[] = [
     probAway: 46
   },
   {
-    id: "br2026-r19-9",
+    id: "br2026-r19-3",
     date: "2026-07-22",
-    time: "20:30",
-    team1: "Vitória",
-    team2: "Vasco da Gama",
-    stadium: "Barradão, Salvador",
-    probHome: 39,
-    probDraw: 30,
-    probAway: 31
+    time: "21:30",
+    team1: "São Paulo",
+    team2: "Athletico-PR",
+    stadium: "MorumBIS, São Paulo",
+    probHome: 44,
+    probDraw: 31,
+    probAway: 25
+  },
+  {
+    id: "br2026-r19-7",
+    date: "2026-07-22",
+    time: "21:30",
+    team1: "Internacional",
+    team2: "Cruzeiro",
+    stadium: "Beira-Rio, Porto Alegre",
+    probHome: 43,
+    probDraw: 31,
+    probAway: 26
   },
   {
     id: "br2026-r19-10",
     date: "2026-07-22",
-    time: "20:00",
+    time: "21:30",
     team1: "Chapecoense",
     team2: "Flamengo",
     stadium: "Arena Condá, Chapecó",
     probHome: 22,
     probDraw: 28,
     probAway: 50
+  },
+  {
+    id: "br2026-r19-4",
+    date: "2026-07-23",
+    time: "19:30",
+    team1: "Corinthians",
+    team2: "Remo",
+    stadium: "Neo Química Arena, São Paulo",
+    probHome: 55,
+    probDraw: 28,
+    probAway: 17
   }
 ];
 
