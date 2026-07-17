@@ -945,7 +945,7 @@ export default function App() {
 
       if (filledPreviews.length > 0) {
         msg += `------------------------------------------\n`;
-        msg += `🔮 *PRÉVIAS DA PRÓXIMA RODADA (OPCIONAIS)*\n`;
+        msg += `*(Palpites antecipados da rodada ${viewedRound + 1})*\n`;
         msg += `------------------------------------------\n`;
         filledPreviews.forEach((match) => {
           const pred = sub.predictions.find(p => p.matchId === match.id);
