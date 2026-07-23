@@ -20,6 +20,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { Match } from "../types";
+import { OFFICIAL_ROUNDS } from "../data/officialRounds";
 
 interface AdminPanelProps {
   activeRound: number;
@@ -149,148 +150,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const generateFallbackGamesForRoundClient = (roundNum: number) => {
-    if (roundNum === 19) {
-      return [
-        {
-          equipes: { mandante: { nome_popular: "Botafogo", nome: "Botafogo" }, visitante: { nome_popular: "Santos", nome: "Santos" } },
-          data_realizacao: "2026-07-16T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Nilton Santos" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Vitória", nome: "Vitória" }, visitante: { nome_popular: "Vasco da Gama", nome: "Vasco da Gama" } },
-          data_realizacao: "2026-07-16T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Barradão" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Fluminense", nome: "Fluminense" }, visitante: { nome_popular: "RB Bragantino", nome: "RB Bragantino" } },
-          data_realizacao: "2026-07-17T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Maracanã" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Mirassol", nome: "Mirassol" }, visitante: { nome_popular: "Grêmio", nome: "Grêmio" } },
-          data_realizacao: "2026-07-17T20:00:00", hora_realizacao: "20:00", sede: { nome_popular: "Maião" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Atlético-MG", nome: "Atlético-MG" }, visitante: { nome_popular: "Bahia", nome: "Bahia" } },
-          data_realizacao: "2026-07-21T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Arena MRV" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Coritiba", nome: "Coritiba" }, visitante: { nome_popular: "Palmeiras", nome: "Palmeiras" } },
-          data_realizacao: "2026-07-22T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Couto Pereira" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "São Paulo", nome: "São Paulo" }, visitante: { nome_popular: "Athletico-PR", nome: "Athletico-PR" } },
-          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "MorumBIS" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Internacional", nome: "Internacional" }, visitante: { nome_popular: "Cruzeiro", nome: "Cruzeiro" } },
-          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Beira-Rio" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Chapecoense", nome: "Chapecoense" }, visitante: { nome_popular: "Flamengo", nome: "Flamengo" } },
-          data_realizacao: "2026-07-22T21:30:00", hora_realizacao: "21:30", sede: { nome_popular: "Arena Condá" }
-        },
-        {
-          equipes: { mandante: { nome_popular: "Corinthians", nome: "Corinthians" }, visitante: { nome_popular: "Remo", nome: "Remo" } },
-          data_realizacao: "2026-07-23T19:30:00", hora_realizacao: "19:30", sede: { nome_popular: "Neo Química Arena" }
-        }
-      ];
-    }
-
-    const list = [...localTeamsPool];
-    const n = list.length;
-    const r = (roundNum - 1) % 19;
-    const rotated = [list[0], ...list.slice(1 + r), ...list.slice(1, 1 + r)];
-    
-    const kickOffTimes = [
-      "16:00", "16:00", "17:00", "19:00", "21:00", // Sábado
-      "11:00", "16:00", "16:00", "18:30", "20:30"  // Domingo
-    ];
-
-    let saturdayDateObj: Date;
-    if (roundNum >= 20) {
-      const baseSaturdayRound20 = new Date("2026-07-25T12:00:00-03:00");
-      const weeksOffset = roundNum - 20;
-      const targetSaturdayTime = baseSaturdayRound20.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
-      saturdayDateObj = new Date(targetSaturdayTime);
-    } else {
-      const baseSaturday = new Date("2026-05-23T12:00:00-03:00");
-      const weeksOffset = roundNum - 17;
-      const targetSaturdayTime = baseSaturday.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
-      saturdayDateObj = new Date(targetSaturdayTime);
-    }
-    
-    const formatDateString = (d: Date): string => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
-
-    const saturdayStr = formatDateString(saturdayDateObj);
-    const sundayShift = new Date(saturdayDateObj.getTime() + (24 * 60 * 60 * 1000));
-    const sundayStr = formatDateString(sundayShift);
-
-    const STADIUMS_MAP: Record<string, string> = {
-      "São Paulo": "MorumBIS",
-      "Botafogo": "Nilton Santos",
-      "Vitória": "Barradão",
-      "Internacional": "Beira-Rio",
-      "Grêmio": "Arena do Grêmio",
-      "Santos": "Vila Belmiro",
-      "Mirassol": "Maião",
-      "Fluminense": "Maracanã",
-      "Flamengo": "Maracanã",
-      "Palmeiras": "Allianz Parque",
-      "Cruzeiro": "Mineirão",
-      "Chapecoense": "Arena Condá",
-      "Remo": "Baenão",
-      "Athletico-PR": "Ligga Arena",
-      "Corinthians": "Neo Química Arena",
-      "Atlético-MG": "Arena MRV",
-      "Vasco da Gama": "São Januário",
-      "RB Bragantino": "Nabizão",
-      "Coritiba": "Couto Pereira",
-      "Bahia": "Arena Fonte Nova"
-    };
-
-    const jogos = [];
-    
-    for (let i = 0; i < n / 2; i++) {
-      let home = rotated[i];
-      let away = rotated[n - 1 - i];
-      
-      if (roundNum > 19) {
-        const temp = home;
-        home = away;
-        away = temp;
-      }
-
-      const isSunday = i >= 5;
-      const matchDate = isSunday ? sundayStr : saturdayStr;
-      const matchTime = kickOffTimes[i];
-
-      let finalTime = matchTime;
-      let finalDate = matchDate;
-      if (i === 1) {
-        finalTime = "18:00"; 
-      } else if (i === 4) {
-        finalTime = "21:30"; 
-      } else if (i === 7) {
-        const tuesdayDate = new Date(saturdayDateObj.getTime() + (3 * 24 * 60 * 60 * 1000));
-        finalDate = formatDateString(tuesdayDate);
-        finalTime = "20:00";
-      }
-
-      jogos.push({
+    const roundMatches = OFFICIAL_ROUNDS[roundNum];
+    if (roundMatches && roundMatches.length > 0) {
+      return roundMatches.map(m => ({
         equipes: {
-          mandante: { nome_popular: home, nome: home },
-          visitante: { nome_popular: away, nome: away }
+          mandante: { nome_popular: m.team1, nome: m.team1 },
+          visitante: { nome_popular: m.team2, nome: m.team2 }
         },
-        data_realizacao: `${finalDate}T${finalTime}:00`,
-        hora_realizacao: finalTime,
-        sede: { nome_popular: STADIUMS_MAP[home] || "Estádio Nacional" }
-      });
+        data_realizacao: `${m.date}T${m.time}:00`,
+        hora_realizacao: m.time,
+        sede: { nome_popular: m.stadium }
+      }));
     }
-    
-    return jogos;
+    return [];
   };
 
   // Sincroniza partidas da rodada focada/ativa com o Globo Esporte
@@ -337,47 +209,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (gamesList.length === 0) {
         logs.push(`⚠️ Nenhum jogo estruturado localizado na resposta do Globo Esporte para a Rodada ${activeRound}.`);
       } else {
-        logs.push(`ℹ️ Recebidos ${gamesList.length} jogos oficiais para cruzamento de dados.`);
+        logs.push(`ℹ️ Recebidos ${gamesList.length} jogos oficiais da Rodada ${activeRound}.`);
 
-        gamesList.forEach((g: any) => {
+        const newSyncedMatches: Match[] = gamesList.map((g: any, index: number) => {
           const mandanteName = g.equipes?.mandante?.nome_popular || g.equipes?.mandante?.nome || "";
           const visitanteName = g.equipes?.visitante?.nome_popular || g.equipes?.visitante?.nome || "";
-
-          if (!mandanteName || !visitanteName) return;
 
           const mappedHome = mapApiTeamName(mandanteName);
           const mappedAway = mapApiTeamName(visitanteName);
 
-          const localIndex = updatedMatches.findIndex(
-            m => normalizeTeamName(m.team1) === normalizeTeamName(mappedHome) &&
-                 normalizeTeamName(m.team2) === normalizeTeamName(mappedAway)
-          );
+          const rawDate = g.data_realizacao || g.data_jogo || "";
+          const parsedDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : "2026-07-25";
+          const parsedTime = g.hora_realizacao || g.hora_jogo || "16:00";
+          const parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || "Estádio";
 
-          if (localIndex !== -1) {
-            const currentMatch = updatedMatches[localIndex];
-            
-            const rawDate = g.data_realizacao || g.data_jogo || "";
-            const parsedDate = rawDate ? rawDate.substring(0, 10) : currentMatch.date;
-            const parsedTime = g.hora_realizacao || g.hora_jogo || currentMatch.time;
-            const parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || currentMatch.stadium;
+          logs.push(`✓ Jogo ${index + 1}: ${mappedHome} x ${mappedAway} -> ${parsedDate.split('-').reverse().join('/')} às ${parsedTime} (${parsedStadium})`);
 
-            const isTimeChanged = currentMatch.date !== parsedDate || currentMatch.time !== parsedTime;
-
-            updatedMatches[localIndex] = {
-              ...currentMatch,
-              date: parsedDate,
-              time: parsedTime,
-              stadium: parsedStadium || currentMatch.stadium
-            };
-
-            matchedCount++;
-            if (isTimeChanged) {
-              logs.push(`✨ REAGENDADO: ${mappedHome} x ${mappedAway} -> Dia ${parsedDate.split('-').reverse().join('/')} às ${parsedTime} no estádio ${parsedStadium}`);
-            } else {
-              logs.push(`ℹ️ Pareado: ${mappedHome} x ${mappedAway} -> Mantido em ${parsedDate.split('-').reverse().join('/')} às ${parsedTime}`);
-            }
-          }
+          return {
+            id: `br2026-r${activeRound}-${index + 1}`,
+            date: parsedDate,
+            time: parsedTime,
+            team1: mappedHome,
+            team2: mappedAway,
+            stadium: parsedStadium,
+            roundName: `${activeRound}ª Rodada`,
+            probHome: 45,
+            probDraw: 30,
+            probAway: 25
+          };
         });
+
+        matchedCount = newSyncedMatches.length;
+        updatedMatches.length = 0;
+        updatedMatches.push(...newSyncedMatches);
       }
 
       if (matchedCount === 0) {

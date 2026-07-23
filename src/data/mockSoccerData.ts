@@ -1,4 +1,5 @@
 import { CompetitionData, Match } from "../types";
+import { OFFICIAL_ROUNDS } from "./officialRounds";
 
 export const round17Matches: Match[] = [
   {
@@ -377,8 +378,12 @@ const TEAMS_LIST = [
   "RB Bragantino", "Coritiba", "Bahia"
 ];
 
-// Gera confrontos de forma determinística usando o Algoritmo Round-Robin (Círculo)
+// Retorna os jogos oficiais do Brasileirão Série A da rodada
 export const getMatchesForRound = (roundNum: number): Match[] => {
+  if (OFFICIAL_ROUNDS[roundNum] && OFFICIAL_ROUNDS[roundNum].length > 0) {
+    return OFFICIAL_ROUNDS[roundNum];
+  }
+
   if (roundNum === 17) {
     return round17Matches;
   }
@@ -389,90 +394,6 @@ export const getMatchesForRound = (roundNum: number): Match[] => {
     return round19Matches;
   }
 
-  const matches: Match[] = [];
-  const n = TEAMS_LIST.length;
-  const list = [...TEAMS_LIST];
-  
-  // Rotação determinística para as primeiras 19 rodadas (Turno)
-  const r = (roundNum - 1) % 19;
-  const rotated = [list[0], ...list.slice(1 + r), ...list.slice(1, 1 + r)];
-  
-  // Lista de horários usuais das rodadas
-  const kickOffTimes = [
-    "16:00", "16:00", "17:00", "19:00", "21:00", // Sábado
-    "11:00", "16:00", "16:00", "18:30", "20:30"  // Domingo
-  ];
-
-  // Para rodadas anteriores à 19ª, use a data base de maio.
-  // A partir de todas as próximas rodadas (Rodada 20+), com a Rodada 19 sendo 22/07/2026,
-  // a Rodada 20 começa no sábado 25/07/2026 e domingo 26/07/2026, estendendo-se cronologicamente para a frente.
-  let saturdayDateObj: Date;
-  if (roundNum >= 20) {
-    const baseSaturdayRound20 = new Date("2026-07-25T12:00:00-03:00");
-    const weeksOffset = roundNum - 20;
-    const targetSaturdayTime = baseSaturdayRound20.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
-    saturdayDateObj = new Date(targetSaturdayTime);
-  } else {
-    const baseSaturday = new Date("2026-05-23T12:00:00-03:00");
-    const weeksOffset = roundNum - 17;
-    const targetSaturdayTime = baseSaturday.getTime() + (weeksOffset * 7 * 24 * 60 * 60 * 1000);
-    saturdayDateObj = new Date(targetSaturdayTime);
-  }
-  
-  const formatDateString = (d: Date): string => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const saturdayStr = formatDateString(saturdayDateObj);
-  
-  const sundayShift = new Date(saturdayDateObj.getTime() + (24 * 60 * 60 * 1000));
-  const sundayStr = formatDateString(sundayShift);
-
-  for (let i = 0; i < n / 2; i++) {
-    // Determina mandante e visitante do Turno
-    let home = rotated[i];
-    let away = rotated[n - 1 - i];
-    
-    // Inverte mando no Returno (Rodadas 20 a 38)
-    if (roundNum > 19) {
-      const temp = home;
-      home = away;
-      away = temp;
-    }
-
-    // Distribui 5 jogos no sábado (index 0 a 4) e 5 no domingo (index 5 a 9)
-    const isSunday = i >= 5;
-    const matchDate = isSunday ? sundayStr : saturdayStr;
-    const matchTime = kickOffTimes[i];
-
-    // Calcula probabilidades baseadas nas qualidades dos times de forma realista e determinística
-    const pseudoRand = (home.length * 5 + away.length * 3 + roundNum + i) % 20;
-    const probHome = 40 + (pseudoRand % 15);
-    const probAway = 20 + ((pseudoRand * 7) % 15);
-    const probDraw = 100 - probHome - probAway;
-
-    matches.push({
-      id: `br2026-r${roundNum}-${i + 1}`,
-      date: matchDate,
-      time: matchTime,
-      team1: home,
-      team2: away,
-      stadium: STADIUMS_MAP[home] || "Estádio Nacional, Brasil",
-      roundName: `${roundNum}ª Rodada`,
-      probHome,
-      probDraw,
-      probAway
-    });
-  }
-
-  // Ordena cronologicamente para exibição padrão
-  return matches.sort((a, b) => {
-    const dateA = new Date(`${a.date}T${a.time}:00-03:00`);
-    const dateB = new Date(`${b.date}T${b.time}:00-03:00`);
-    return dateA.getTime() - dateB.getTime();
-  });
+  return [];
 };
 

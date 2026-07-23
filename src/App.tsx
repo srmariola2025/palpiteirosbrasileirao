@@ -683,46 +683,38 @@ export default function App() {
         }
 
         if (gamesList.length > 0) {
-          const currentMatches = [...(updated[r] || getMatchesForRound(r))];
-          let matchedCount = 0;
-
-          gamesList.forEach((g: any) => {
+          const syncedRoundMatches: Match[] = gamesList.map((g: any, index: number) => {
             const mandanteName = g.equipes?.mandante?.nome_popular || g.equipes?.mandante?.nome || "";
             const visitanteName = g.equipes?.visitante?.nome_popular || g.equipes?.visitante?.nome || "";
-
-            if (!mandanteName || !visitanteName) return;
 
             const mappedHome = mapApiTeamName(mandanteName);
             const mappedAway = mapApiTeamName(visitanteName);
 
-            const localIndex = currentMatches.findIndex(
-              m => normalizeTeamName(m.team1) === normalizeTeamName(mappedHome) &&
-                   normalizeTeamName(m.team2) === normalizeTeamName(mappedAway)
-            );
+            const rawDate = g.data_realizacao || g.data_jogo || "";
+            const parsedDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : "2026-07-25";
+            const parsedTime = g.hora_realizacao || g.hora_jogo || "16:00";
+            const parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || "Estádio";
 
-            if (localIndex !== -1) {
-              const currentMatch = currentMatches[localIndex];
-              const rawDate = g.data_realizacao || g.data_jogo || "";
-              const parsedDate = rawDate ? rawDate.substring(0, 10) : currentMatch.date;
-              const parsedTime = g.hora_realizacao || g.hora_jogo || currentMatch.time;
-              const parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || currentMatch.stadium;
-
-              currentMatches[localIndex] = {
-                ...currentMatch,
-                date: parsedDate,
-                time: parsedTime,
-                stadium: parsedStadium || currentMatch.stadium
-              };
-              matchedCount++;
-            }
+            return {
+              id: `br2026-r${r}-${index + 1}`,
+              date: parsedDate,
+              time: parsedTime,
+              team1: mappedHome,
+              team2: mappedAway,
+              stadium: parsedStadium,
+              roundName: `${r}ª Rodada`,
+              probHome: 45,
+              probDraw: 30,
+              probAway: 25
+            };
           });
 
-          updated[r] = currentMatches;
+          updated[r] = syncedRoundMatches;
           
           if (isAdminLogged) {
-            await saveRoundToFirestore(r, currentMatches);
+            await saveRoundToFirestore(r, syncedRoundMatches);
           }
-          onProgress(`➔ Rodada ${r} concluída! Pareou e atualizou (${matchedCount}) partidas.`);
+          onProgress(`➔ Rodada ${r} concluída! Reconstruído e atualizado (${syncedRoundMatches.length}) partidas oficiais.`);
         } else {
           onProgress(`⚠️ Rodada ${r} não retornou nenhum confronto válido.`);
         }
