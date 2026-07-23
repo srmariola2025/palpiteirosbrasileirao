@@ -15,6 +15,7 @@ import {
   Info
 } from "lucide-react";
 import { brasileiraoMockData, round17Matches, round18Matches, getMatchesForRound } from "./data/mockSoccerData";
+import { OFFICIAL_ROUNDS } from "./data/officialRounds";
 import { Match, UserPrediction, BetSlipSubmission } from "./types";
 import { TrophyHeader } from "./components/TrophyHeader";
 import { AdminPanel } from "./components/AdminPanel";
@@ -65,6 +66,29 @@ const sortMatchesChronologically = (matches: Match[]) => {
   });
 };
 
+const sanitizeRounds = (rounds: Record<number, Match[]>): Record<number, Match[]> => {
+  const sanitized: Record<number, Match[]> = {};
+  for (let r = 1; r <= 38; r++) {
+    const list = rounds[r];
+    // Check if round is missing or corrupted (e.g. multiple matches showing São Paulo x São Paulo or team1 === team2)
+    const isCorrupted = !list || list.length === 0 || (list.length >= 3 && list.filter(m => m.team1 === m.team2 || !m.team1 || m.team1 === "São Paulo" && m.team2 === "São Paulo").length >= 2);
+    if (isCorrupted) {
+      sanitized[r] = OFFICIAL_ROUNDS[r] || getMatchesForRound(r);
+    } else {
+      sanitized[r] = list.map(m => {
+        if (m.team1 === m.team2 || !m.team1 || !m.team2) {
+          const officialList = OFFICIAL_ROUNDS[r] || [];
+          const foundOfficial = officialList.find(om => om.id === m.id);
+          if (foundOfficial) return foundOfficial;
+          return { ...m, team1: m.team1 || "Mandante", team2: m.team2 || "Visitante" };
+        }
+        return m;
+      });
+    }
+  }
+  return sanitized;
+};
+
 export default function App() {
   // Firebase configuration and load states
   const [firebaseLoading, setFirebaseLoading] = useState<boolean>(true);
@@ -79,13 +103,13 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         if (Object.keys(parsed).length > 0) {
-          return parsed;
+          return sanitizeRounds(parsed);
         }
       } catch { /* ignore */ }
     }
     const initialRounds: Record<number, Match[]> = {};
     for (let r = 1; r <= 38; r++) {
-      initialRounds[r] = getMatchesForRound(r);
+      initialRounds[r] = OFFICIAL_ROUNDS[r] || getMatchesForRound(r);
     }
     return initialRounds;
   });
@@ -97,7 +121,7 @@ export default function App() {
         setFirebaseLoading(true);
         const cloudRounds = await fetchAllRoundsFromFirestore();
         if (cloudRounds) {
-          setMatchesState(cloudRounds);
+          setMatchesState(sanitizeRounds(cloudRounds));
           setFirebaseRoundsEmpty(false);
         } else {
           setFirebaseRoundsEmpty(true);
@@ -648,11 +672,19 @@ export default function App() {
     ];
 
     const mapApiTeamName = (foreignName: string): string => {
+      if (!foreignName || !foreignName.trim()) return "";
       const foreignNorm = normalizeTeamName(foreignName);
+      if (!foreignNorm) return foreignName;
+
       for (const localTeam of localTeamsPool) {
         const localNorm = normalizeTeamName(localTeam);
-        if (foreignNorm === localNorm || foreignNorm.includes(localNorm) || localNorm.includes(foreignNorm)) {
+        if (foreignNorm === localNorm) {
           return localTeam;
+        }
+        if (foreignNorm.length >= 3 && localNorm.length >= 3) {
+          if (foreignNorm.includes(localNorm) || localNorm.includes(foreignNorm)) {
+            return localTeam;
+          }
         }
       }
       return foreignName;
@@ -662,12 +694,16 @@ export default function App() {
     for (let r = 19; r <= 38; r++) {
       onProgress(`\n🔄 Sincronizando Rodada ${r}/38...`);
       try {
-        const res = await fetch(`/api/sync-ge/${r}`);
         let responseData: any = null;
-        if (res.ok) {
-          responseData = await res.json();
-        } else {
-          responseData = getMatchesForRound(r);
+        try {
+          const res = await fetch(`/api/sync-ge/${r}`);
+          if (res.ok) {
+            responseData = await res.json();
+          } else {
+            responseData = OFFICIAL_ROUNDS[r] || getMatchesForRound(r);
+          }
+        } catch {
+          responseData = OFFICIAL_ROUNDS[r] || getMatchesForRound(r);
         }
 
         let gamesList: any[] = [];
@@ -684,16 +720,30 @@ export default function App() {
 
         if (gamesList.length > 0) {
           const syncedRoundMatches: Match[] = gamesList.map((g: any, index: number) => {
-            const mandanteName = g.equipes?.mandante?.nome_popular || g.equipes?.mandante?.nome || "";
-            const visitanteName = g.equipes?.visitante?.nome_popular || g.equipes?.visitante?.nome || "";
+            let mappedHome = "";
+            let mappedAway = "";
+            let parsedDate = "";
+            let parsedTime = "";
+            let parsedStadium = "";
 
-            const mappedHome = mapApiTeamName(mandanteName);
-            const mappedAway = mapApiTeamName(visitanteName);
+            if (g.team1 && g.team2) {
+              mappedHome = mapApiTeamName(g.team1) || g.team1;
+              mappedAway = mapApiTeamName(g.team2) || g.team2;
+              parsedDate = g.date || "2026-07-25";
+              parsedTime = g.time || "16:00";
+              parsedStadium = g.stadium || "Estádio";
+            } else {
+              const mandanteName = g.equipes?.mandante?.nome_popular || g.equipes?.mandante?.nome || "";
+              const visitanteName = g.equipes?.visitante?.nome_popular || g.equipes?.visitante?.nome || "";
 
-            const rawDate = g.data_realizacao || g.data_jogo || "";
-            const parsedDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : "2026-07-25";
-            const parsedTime = g.hora_realizacao || g.hora_jogo || "16:00";
-            const parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || "Estádio";
+              mappedHome = mapApiTeamName(mandanteName) || mandanteName || "Mandante";
+              mappedAway = mapApiTeamName(visitanteName) || visitanteName || "Visitante";
+
+              const rawDate = g.data_realizacao || g.data_jogo || "";
+              parsedDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : "2026-07-25";
+              parsedTime = g.hora_realizacao || g.hora_jogo || "16:00";
+              parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || "Estádio";
+            }
 
             return {
               id: `br2026-r${r}-${index + 1}`,

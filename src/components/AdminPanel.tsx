@@ -137,13 +137,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   ];
 
   const mapApiTeamName = (foreignName: string): string => {
+    if (!foreignName || !foreignName.trim()) return "";
     const foreignNorm = normalizeTeamName(foreignName);
+    if (!foreignNorm) return foreignName;
     
     // Exact mapping check
     for (const localTeam of localTeamsPool) {
       const localNorm = normalizeTeamName(localTeam);
-      if (foreignNorm === localNorm || foreignNorm.includes(localNorm) || localNorm.includes(foreignNorm)) {
+      if (foreignNorm === localNorm) {
         return localTeam;
+      }
+      if (foreignNorm.length >= 3 && localNorm.length >= 3) {
+        if (foreignNorm.includes(localNorm) || localNorm.includes(foreignNorm)) {
+          return localTeam;
+        }
       }
     }
     return foreignName;
@@ -212,16 +219,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         logs.push(`ℹ️ Recebidos ${gamesList.length} jogos oficiais da Rodada ${activeRound}.`);
 
         const newSyncedMatches: Match[] = gamesList.map((g: any, index: number) => {
-          const mandanteName = g.equipes?.mandante?.nome_popular || g.equipes?.mandante?.nome || "";
-          const visitanteName = g.equipes?.visitante?.nome_popular || g.equipes?.visitante?.nome || "";
+          let mappedHome = "";
+          let mappedAway = "";
+          let parsedDate = "";
+          let parsedTime = "";
+          let parsedStadium = "";
 
-          const mappedHome = mapApiTeamName(mandanteName);
-          const mappedAway = mapApiTeamName(visitanteName);
+          if (g.team1 && g.team2) {
+            mappedHome = mapApiTeamName(g.team1) || g.team1;
+            mappedAway = mapApiTeamName(g.team2) || g.team2;
+            parsedDate = g.date || "2026-07-25";
+            parsedTime = g.time || "16:00";
+            parsedStadium = g.stadium || "Estádio";
+          } else {
+            const mandanteName = g.equipes?.mandante?.nome_popular || g.equipes?.mandante?.nome || "";
+            const visitanteName = g.equipes?.visitante?.nome_popular || g.equipes?.visitante?.nome || "";
 
-          const rawDate = g.data_realizacao || g.data_jogo || "";
-          const parsedDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : "2026-07-25";
-          const parsedTime = g.hora_realizacao || g.hora_jogo || "16:00";
-          const parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || "Estádio";
+            mappedHome = mapApiTeamName(mandanteName) || mandanteName || "Mandante";
+            mappedAway = mapApiTeamName(visitanteName) || visitanteName || "Visitante";
+
+            const rawDate = g.data_realizacao || g.data_jogo || "";
+            parsedDate = rawDate.length >= 10 ? rawDate.substring(0, 10) : "2026-07-25";
+            parsedTime = g.hora_realizacao || g.hora_jogo || "16:00";
+            parsedStadium = g.sede?.nome_popular || g.estadio?.nome_popular || g.sede?.nome || "Estádio";
+          }
 
           logs.push(`✓ Jogo ${index + 1}: ${mappedHome} x ${mappedAway} -> ${parsedDate.split('-').reverse().join('/')} às ${parsedTime} (${parsedStadium})`);
 
