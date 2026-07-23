@@ -107,6 +107,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // String normalization for robust team matching
   const normalizeTeamName = (name: string): string => {
+    if (!name) return "";
     return name
       .toLowerCase()
       .normalize("NFD")
@@ -125,16 +126,48 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       .replace("atleticomg", "atleticomg")
       .replace("vascodagama", "vascodagama")
       .replace("vasco", "vascodagama")
-      .replace("chapecoenseaf", "chapecoense");
+      .replace("chapecoenseaf", "chapecoense")
+      .replace("juventuders", "juventude");
   };
 
-  // Find corresponding local team mapping
+  // Find corresponding local team mapping - Strictly Serie A teams
   const localTeamsPool = [
     "São Paulo", "Botafogo", "Vitória", "Internacional", "Grêmio", "Santos", 
     "Mirassol", "Fluminense", "Flamengo", "Palmeiras", "Cruzeiro", "Chapecoense", 
     "Remo", "Athletico-PR", "Corinthians", "Atlético-MG", "Vasco da Gama", 
-    "RB Bragantino", "Coritiba", "Bahia"
+    "RB Bragantino", "Coritiba", "Bahia", "Juventude", "Cuiabá", "Fortaleza",
+    "Criciúma", "Atlético-GO"
   ];
+
+  const STADIUMS_MAP: Record<string, string> = {
+    "São Paulo": "Morumbis",
+    "Botafogo": "Nilton Santos",
+    "Vitória": "Barradão",
+    "Internacional": "Beira-Rio",
+    "Grêmio": "Arena do Grêmio",
+    "Santos": "Vila Belmiro",
+    "Mirassol": "Maião",
+    "Fluminense": "Maracanã",
+    "Flamengo": "Maracanã",
+    "Palmeiras": "Allianz Parque",
+    "Cruzeiro": "Mineirão",
+    "Chapecoense": "Arena Condá",
+    "Remo": "Baenão",
+    "Athletico-PR": "Ligga Arena",
+    "Corinthians": "Neo Química Arena",
+    "Atlético-MG": "Arena MRV",
+    "Vasco da Gama": "São Januário",
+    "RB Bragantino": "Nabizão",
+    "Coritiba": "Couto Pereira",
+    "Bahia": "Casa de Apostas Arena Fonte Nova",
+    "Juventude": "Alfredo Jaconi",
+    "Cuiabá": "Arena Pantanal",
+    "Fortaleza": "Castelão",
+    "Criciúma": "Heriberto Hülse",
+    "Goiás": "Serrinha",
+    "América-MG": "Independência",
+    "Atlético-GO": "Antonio Accioly"
+  };
 
   const mapApiTeamName = (foreignName: string): string => {
     if (!foreignName || !foreignName.trim()) return "";
@@ -147,7 +180,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       if (foreignNorm === localNorm) {
         return localTeam;
       }
-      if (foreignNorm.length >= 3 && localNorm.length >= 3) {
+    }
+    for (const localTeam of localTeamsPool) {
+      const localNorm = normalizeTeamName(localTeam);
+      if (foreignNorm.length >= 4 && localNorm.length >= 4) {
         if (foreignNorm.includes(localNorm) || localNorm.includes(foreignNorm)) {
           return localTeam;
         }
@@ -293,95 +329,163 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       return;
     }
 
-    const lines = rawTextToSync.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+    const rawLines = rawTextToSync.split("\n").map(l => l.trim()).filter(l => l.length > 0);
     const updatedMatches = [...matches];
-    let matchedCount = 0;
     const logs: string[] = [];
 
-    const groups = [
-      { name: `${activeRound}ª Rodada`, list: updatedMatches }
-    ];
+    // PASS 1: Direct line-by-line team-pair extraction
+    const extractedMatches: Match[] = [];
+    const dateRegex = /\b(0?[1-9]|[12][0-9]|3[01])[\/\.-](0?[1-9]|1[012])\b/;
+    const timeRegex = /\b([01]?[0-9]|2[0-3])[:hH]([0-5][0-9])\b/;
 
-    groups.forEach(g => {
-      g.list.forEach((match, idx) => {
-        const t1Norm = normalizeTeamName(match.team1);
-        const t2Norm = normalizeTeamName(match.team2);
+    for (let i = 0; i < rawLines.length; i++) {
+      const line = rawLines[i];
+      const normLine = normalizeTeamName(line);
 
-        let matchedInWindow = false;
-        let windowText = "";
+      // Find all teams mentioned on this line
+      const foundTeamsOnLine: { team: string; index: number }[] = [];
+      for (const t of localTeamsPool) {
+        const tNorm = normalizeTeamName(t);
+        if (tNorm && normLine.includes(tNorm)) {
+          const pos = normLine.indexOf(tNorm);
+          foundTeamsOnLine.push({ team: t, index: pos });
+        }
+      }
 
-        // Check matching team names on the same line
-        for (let i = 0; i < lines.length; i++) {
-          const lineNorm = normalizeTeamName(lines[i]);
-          if (lineNorm.includes(t1Norm) && lineNorm.includes(t2Norm)) {
-            matchedInWindow = true;
-            const start = Math.max(0, i - 2);
-            const end = Math.min(lines.length - 1, i + 2);
-            windowText = lines.slice(start, end + 1).join(" ");
-            break;
-          }
+      // Sort by occurrence position in line
+      foundTeamsOnLine.sort((a, b) => a.index - b.index);
+
+      // Filter out duplicates (e.g. if 'atleticomg' matched inside a longer string twice)
+      const uniqueTeams: string[] = [];
+      for (const item of foundTeamsOnLine) {
+        if (!uniqueTeams.includes(item.team)) {
+          uniqueTeams.push(item.team);
+        }
+      }
+
+      if (uniqueTeams.length >= 2) {
+        const team1 = uniqueTeams[0];
+        const team2 = uniqueTeams[1];
+
+        // Search for date and time on this line or adjacent lines (i-1, i, i+1)
+        const windowText = rawLines.slice(Math.max(0, i - 1), Math.min(rawLines.length, i + 2)).join(" ");
+        const dateMatch = windowText.match(dateRegex);
+        const timeMatch = windowText.match(timeRegex);
+
+        let parsedDate = "2026-07-25";
+        if (dateMatch) {
+          const day = dateMatch[1].padStart(2, "0");
+          const month = dateMatch[2].padStart(2, "0");
+          parsedDate = `2026-${month}-${day}`;
         }
 
-        // Check matching team names on adjacent lines if not found together
-        if (!matchedInWindow) {
-          for (let i = 0; i < lines.length - 1; i++) {
-            const line1Norm = normalizeTeamName(lines[i]);
-            const line2Norm = normalizeTeamName(lines[i+1]);
-            if (
-              (line1Norm.includes(t1Norm) && line2Norm.includes(t2Norm)) ||
-              (line1Norm.includes(t2Norm) && line2Norm.includes(t1Norm))
-            ) {
-              matchedInWindow = true;
-              const start = Math.max(0, i - 2);
-              const end = Math.min(lines.length - 1, i + 3);
-              windowText = lines.slice(start, end + 1).join(" ");
-              break;
-            }
-          }
+        let parsedTime = "16:00";
+        if (timeMatch) {
+          const hours = timeMatch[1].padStart(2, "0");
+          const minutes = timeMatch[2].padStart(2, "0");
+          parsedTime = `${hours}:${minutes}`;
         }
 
-        // If a game matches in text, extract the Date and Time near it
-        if (matchedInWindow) {
-          const dateRegex = /\b(0?[1-9]|[12][0-9]|3[01])[\/\.-](0?[1-9]|1[012])\b/;
-          const timeRegex = /\b([01]?[0-9]|2[0-3])[:hH]([0-5][0-9])\b/;
+        const stadium = STADIUMS_MAP[team1] || "Estádio";
 
-          const dateMatch = windowText.match(dateRegex);
-          const timeMatch = windowText.match(timeRegex);
+        extractedMatches.push({
+          id: `br2026-r${activeRound}-${extractedMatches.length + 1}`,
+          date: parsedDate,
+          time: parsedTime,
+          team1,
+          team2,
+          stadium,
+          roundName: `${activeRound}ª Rodada`,
+          probHome: 45,
+          probDraw: 30,
+          probAway: 25
+        });
 
-          if (dateMatch && timeMatch) {
-            const day = dateMatch[1].padStart(2, "0");
-            const month = dateMatch[2].padStart(2, "0");
-            const parsedDate = `2026-${month}-${day}`;
-            
-            const hours = timeMatch[1].padStart(2, "0");
-            const minutes = timeMatch[2].padStart(2, "0");
-            const parsedTime = `${hours}:${minutes}`;
+        logs.push(`✓ Extraído do Texto: ${team1} x ${team2} -> ${parsedDate.split('-').reverse().join('/')} às ${parsedTime} (${stadium})`);
+      }
+    }
 
-            const isUnchanged = match.date === parsedDate && match.time === parsedTime;
-
-            g.list[idx] = {
-              ...match,
-              date: parsedDate,
-              time: parsedTime
-            };
-            matchedCount++;
-            if (isUnchanged) {
-              logs.push(`ℹ️ [${g.name}] Mantido: ${match.team1} x ${match.team2} -> Dia ${day}/${month} às ${hours}:${minutes}`);
-            } else {
-              logs.push(`✅ [${g.name}] ATUALIZADO: ${match.team1} x ${match.team2} -> Reagendado para dia ${day}/${month} às ${hours}:${minutes}`);
-            }
+    if (extractedMatches.length > 0) {
+      // Direct extraction succeeded! Replace or update matches
+      let finalMatches: Match[] = [];
+      if (extractedMatches.length >= updatedMatches.length) {
+        finalMatches = extractedMatches;
+      } else {
+        // Merge extracted matches into updatedMatches
+        finalMatches = [...updatedMatches];
+        extractedMatches.forEach(ext => {
+          const extT1 = normalizeTeamName(ext.team1);
+          const extT2 = normalizeTeamName(ext.team2);
+          const idx = finalMatches.findIndex(m => 
+            (normalizeTeamName(m.team1) === extT1 && normalizeTeamName(m.team2) === extT2) ||
+            (normalizeTeamName(m.team1) === extT2 && normalizeTeamName(m.team2) === extT1)
+          );
+          if (idx !== -1) {
+            finalMatches[idx] = ext;
           } else {
-            logs.push(`⚠️ [${g.name}] Mapeado [${match.team1} x ${match.team2}], mas NÃO RECONHECEU a data (DD/MM) ou hora (HH:MM) nas linhas próximas.`);
+            finalMatches.push(ext);
           }
-        }
+        });
+      }
+
+      onSyncAPI(activeRound, finalMatches);
+      setTextSyncResult({
+        success: true,
+        message: `Sincronização concluída! Foram extraídos e salvos ${extractedMatches.length} jogos para a ${activeRound}ª Rodada com sucesso!`,
+        logs
       });
+      return;
+    }
+
+    // PASS 2: Fallback window matching against existing round matches
+    let matchedCount = 0;
+    updatedMatches.forEach((match, idx) => {
+      const t1Norm = normalizeTeamName(match.team1);
+      const t2Norm = normalizeTeamName(match.team2);
+
+      let matchedInWindow = false;
+      let windowText = "";
+
+      for (let i = 0; i < rawLines.length; i++) {
+        const lineNorm = normalizeTeamName(rawLines[i]);
+        if (t1Norm && t2Norm && lineNorm.includes(t1Norm) && lineNorm.includes(t2Norm)) {
+          matchedInWindow = true;
+          const start = Math.max(0, i - 2);
+          const end = Math.min(rawLines.length - 1, i + 2);
+          windowText = rawLines.slice(start, end + 1).join(" ");
+          break;
+        }
+      }
+
+      if (matchedInWindow) {
+        const dateMatch = windowText.match(dateRegex);
+        const timeMatch = windowText.match(timeRegex);
+
+        if (dateMatch && timeMatch) {
+          const day = dateMatch[1].padStart(2, "0");
+          const month = dateMatch[2].padStart(2, "0");
+          const parsedDate = `2026-${month}-${day}`;
+          
+          const hours = timeMatch[1].padStart(2, "0");
+          const minutes = timeMatch[2].padStart(2, "0");
+          const parsedTime = `${hours}:${minutes}`;
+
+          updatedMatches[idx] = {
+            ...match,
+            date: parsedDate,
+            time: parsedTime
+          };
+          matchedCount++;
+          logs.push(`✅ ATUALIZADO: ${match.team1} x ${match.team2} -> Reagendado para dia ${day}/${month} às ${hours}:${minutes}`);
+        }
+      }
     });
 
     if (matchedCount > 0) {
       onSyncAPI(activeRound, updatedMatches);
       setTextSyncResult({
         success: true,
-        message: `Sincronização por texto concluída! Analisou o texto e atualizou ${matchedCount} jogos da ${activeRound}ª Rodada com sucesso!`,
+        message: `Sincronização por texto concluída! Atualizou ${matchedCount} jogos da ${activeRound}ª Rodada com sucesso!`,
         logs
       });
     } else {
@@ -389,7 +493,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         success: false,
         message: "⚠️ Nenhum jogo reconhecido no texto. Certifique-se de incluir adversários corretos e as datas próximos deles.",
         logs: [
-          "Dica: Tente colar algo como: 'Remo x São Paulo: 31/05 às 20:30'."
+          "Dica: Tente colar algo como: 'Palmeiras vs Fluminense - Quarta-feira 24/07 às 21:30' ou 'Remo x São Paulo: 31/05 às 20:30'."
         ]
       });
     }

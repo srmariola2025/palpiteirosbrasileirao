@@ -643,6 +643,7 @@ export default function App() {
     const updated = { ...matchesState };
     
     const normalizeTeamName = (name: string): string => {
+      if (!name) return "";
       return name
         .toLowerCase()
         .normalize("NFD")
@@ -661,14 +662,16 @@ export default function App() {
         .replace("atleticomg", "atleticomg")
         .replace("vascodagama", "vascodagama")
         .replace("vasco", "vascodagama")
-        .replace("chapecoenseaf", "chapecoense");
+        .replace("chapecoenseaf", "chapecoense")
+        .replace("juventuders", "juventude");
     };
 
     const localTeamsPool = [
       "São Paulo", "Botafogo", "Vitória", "Internacional", "Grêmio", "Santos", 
       "Mirassol", "Fluminense", "Flamengo", "Palmeiras", "Cruzeiro", "Chapecoense", 
       "Remo", "Athletico-PR", "Corinthians", "Atlético-MG", "Vasco da Gama", 
-      "RB Bragantino", "Coritiba", "Bahia"
+      "RB Bragantino", "Coritiba", "Bahia", "Juventude", "Cuiabá", "Fortaleza",
+      "Criciúma", "Atlético-GO"
     ];
 
     const mapApiTeamName = (foreignName: string): string => {
@@ -681,7 +684,10 @@ export default function App() {
         if (foreignNorm === localNorm) {
           return localTeam;
         }
-        if (foreignNorm.length >= 3 && localNorm.length >= 3) {
+      }
+      for (const localTeam of localTeamsPool) {
+        const localNorm = normalizeTeamName(localTeam);
+        if (foreignNorm.length >= 4 && localNorm.length >= 4) {
           if (foreignNorm.includes(localNorm) || localNorm.includes(foreignNorm)) {
             return localTeam;
           }
